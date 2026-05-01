@@ -16,50 +16,26 @@
       color: #D4EED4;
       font-family: 'Roboto Mono', 'Courier New', monospace;
     }
-    /* Custom PCB Tech Scrollbar */
     ::-webkit-scrollbar { width: 8px; height: 8px; }
     ::-webkit-scrollbar-track { background: #0A1A0A; border-left: 1px solid rgba(200,134,10,0.25); }
     ::-webkit-scrollbar-thumb { background: rgba(200,134,10,0.4); border-radius: 4px; }
     ::-webkit-scrollbar-thumb:hover { background: rgba(200,134,10,0.7); }
-    
     * { box-sizing: border-box; }
   </style>
 </head>
 <body>
   <div id="root"></div>
-
-  <!-- React & Babel -->
   <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
   <script type="text/babel">
-    const { useState, useEffect, useMemo } = React;
+    const { useState, useMemo, useEffect, useRef, useCallback } = React;
 
     /* ============================================================
-       LOCAL STORAGE HOOK
+       !! PASTE YOUR GOOGLE APPS SCRIPT URL HERE !!
     ============================================================ */
-    function useLocalStorage(key, initialValue) {
-      const [storedValue, setStoredValue] = useState(() => {
-        try {
-          const item = window.localStorage.getItem(key);
-          return item ? JSON.parse(item) : initialValue;
-        } catch (error) {
-          console.error("Error reading localStorage", error);
-          return initialValue;
-        }
-      });
-
-      useEffect(() => {
-        try {
-          window.localStorage.setItem(key, JSON.stringify(storedValue));
-        } catch (error) {
-          console.error("Error setting localStorage", error);
-        }
-      }, [key, storedValue]);
-
-      return [storedValue, setStoredValue];
-    }
+    const GAS_URL = "https://script.google.com/macros/s/AKfycbzv0UjXtrjsrEb9YAT0CUcAd2aDPRX0HKa_vlefg8WOpWDvg2QaBzKJ4_PuUjEmHwYX/exec";
 
     /* ============================================================
        PCB THEME — ANIMO SPEAR
@@ -88,7 +64,6 @@
     };
 
     const FONT_MONO = "'Roboto Mono', 'Courier New', monospace";
-    
     const glow   = (c) => `0 0 12px ${c}66, 0 0 28px ${c}22`;
     const traceG = (c) => `0 0 6px ${c}88, 0 0 16px ${c}33`;
 
@@ -103,6 +78,7 @@
     const TASK_PRIORITIES = ["Critical","High","Medium","Low"];
     const COMP_STATUSES   = ["Upcoming","Ongoing","Completed"];
     const MEMBER_ROLES    = ["Commander","Flight Director","Mission Specialist","Payload Specialist","Systems Engineer","Navigation Officer","Ground Control","Pilot"];
+    const BLOG_TAGS       = ["Announcement","Hardware","Software","Events","Finance","Reminder","Urgent"];
 
     const defaultParts = [
       { id:1, name:"NEMA 17 Stepper Motor",    category:"Actuators",      qty:6,  min:4, loc:"Shelf A1", status:"Available",    notes:"1.8°/step, 1.7A" },
@@ -110,41 +86,43 @@
       { id:3, name:"TB6600 Stepper Driver",    category:"Drivers",         qty:8,  min:3, loc:"Cabinet B", status:"Available",   notes:"4A max current" },
       { id:4, name:"LiPo 3S 2200mAh",          category:"Power",           qty:0,  min:4, loc:"Shelf C1", status:"Out of Stock", notes:"On order ETA 1wk" },
       { id:5, name:"MPU6050 IMU Sensor",       category:"Sensors",         qty:10, min:3, loc:"Drawer D", status:"Available",    notes:"6-axis gyro+accel" },
-      { id:6, name:"20x20mm Aluminum Profile", category:"Structure",       qty:12, min:6, loc:"Rack E",  status:"Available",    notes:"2040 V-slot series" },
+      { id:6, name:"20x20mm Aluminum Profile", category:"Structure",       qty:12, min:6, loc:"Rack E",   status:"Available",    notes:"2040 V-slot series" },
     ];
 
     const defaultMembers = [
-      { id:1,  name:"Amir Zabihi",      role:"Commander",          subteam:"President",                      active:true },
-      { id:2,  name:"Lana Fajayo",      role:"Flight Director",    subteam:"Vice President & PRO",           active:true },
-      { id:3,  name:"Andrea Escamilla", role:"Mission Specialist", subteam:"VP of Creatives & Marketing",    active:true },
-      { id:4,  name:"Mikoh Filoteo",    role:"Payload Specialist", subteam:"VP of Finance & Business",       active:true },
-      { id:5,  name:"Denielle Medina",  role:"Navigation Officer", subteam:"Secretary",                      active:true },
+      { id:1,  name:"Amir Zabihi",      role:"Commander",          subteam:"President",                        active:true },
+      { id:2,  name:"Lana Fajayo",      role:"Flight Director",    subteam:"Vice President & PRO",             active:true },
+      { id:3,  name:"Andrea Escamilla", role:"Mission Specialist", subteam:"VP of Creatives & Marketing",      active:true },
+      { id:4,  name:"Mikoh Filoteo",    role:"Payload Specialist", subteam:"VP of Finance & Business",         active:true },
+      { id:5,  name:"Denielle Medina",  role:"Navigation Officer", subteam:"Secretary",                        active:true },
       { id:6,  name:"Daphne Acena",     role:"Pilot",              subteam:"Robotics Captain & Research Head", active:true },
-      { id:7,  name:"Matt Pacifico",    role:"Systems Engineer",   subteam:"Software Head",                  active:true },
-      { id:8,  name:"Aldus Plaus",      role:"Ground Control",     subteam:"Projects Head",                  active:true },
-      { id:9,  name:"Jaiden Olasiman",  role:"Mission Specialist", subteam:"Hardware Head",                  active:true },
-      { id:10, name:"Prince Sadia",     role:"Navigation Officer", subteam:"Trainings Head",                 active:true },
+      { id:7,  name:"Matt Pacifico",    role:"Systems Engineer",   subteam:"Software Head",                    active:true },
+      { id:8,  name:"Aldus Plaus",      role:"Ground Control",     subteam:"Projects Head",                    active:true },
+      { id:9,  name:"Jaiden Olasiman",  role:"Mission Specialist", subteam:"Hardware Head",                    active:true },
+      { id:10, name:"Prince Sadia",     role:"Navigation Officer", subteam:"Trainings Head",                   active:true },
     ];
 
     const defaultTasks = [
-      { id:1, title:"PCB Layout v2.0",        desc:"Finalize KiCAD layout for main controller",   assignee:"Matt Pacifico",   due:NOW+DAY*3, priority:"Critical", status:"In Progress", cat:"Hardware" },
-      { id:2, title:"ROS2 Navigation Stack",  desc:"Implement SLAM + autonomous path planning",   assignee:"Daphne Acena",    due:NOW+DAY*7, priority:"High",     status:"To Do",       cat:"Software" },
-      { id:3, title:"Restock stepper drivers",desc:"Order TB6600 x10 units from supplier",        assignee:"Mikoh Filoteo",   due:NOW+DAY*2, priority:"High",     status:"To Do",       cat:"Inventory" },
-      { id:4, title:"Sponsor proposal deck",  desc:"TechCorp sponsorship presentation",           assignee:"Andrea Escamilla",due:NOW+DAY*5, priority:"Medium",   status:"Review",      cat:"Business" },
+      { id:1, title:"PCB Layout v2.0",        desc:"Finalize KiCAD layout for main controller",   assignee:"Matt Pacifico",    due:NOW+DAY*3, priority:"Critical", status:"In Progress", cat:"Hardware" },
+      { id:2, title:"ROS2 Navigation Stack",  desc:"Implement SLAM + autonomous path planning",   assignee:"Daphne Acena",     due:NOW+DAY*7, priority:"High",     status:"To Do",       cat:"Software" },
+      { id:3, title:"Restock stepper drivers",desc:"Order TB6600 x10 units from supplier",        assignee:"Mikoh Filoteo",    due:NOW+DAY*2, priority:"High",     status:"To Do",       cat:"Inventory" },
+      { id:4, title:"Sponsor proposal deck",  desc:"TechCorp sponsorship presentation",           assignee:"Andrea Escamilla", due:NOW+DAY*5, priority:"Medium",   status:"Review",      cat:"Business" },
     ];
 
     const defaultComps = [
-      { id:1, name:"RoboCon PH 2026",  loc:"Manila, PH",     date:NOW+DAY*20, ranking:null, score:null, notes:"National robotics championship",  status:"Upcoming" },
-      { id:2, name:"STEM Fair DLSU-D", loc:"Dasmariñas, PH", date:NOW-DAY*30, ranking:1,    score:92,   notes:"1st place autonomous challenge",  status:"Completed" },
+      { id:1, name:"RoboCon PH 2026",  loc:"Manila, PH",     date:NOW+DAY*20, ranking:null, score:null, notes:"National robotics championship", status:"Upcoming"  },
+      { id:2, name:"STEM Fair DLSU-D", loc:"Dasmariñas, PH", date:NOW-DAY*30, ranking:1,    score:92,   notes:"1st place autonomous challenge", status:"Completed" },
     ];
 
     const defaultBudget = [
-      { id:1, title:"DLSU-D STEM Grant",         amount:25000, cat:"Grant",       type:"Income",  date:NOW-DAY*60, notes:"Annual robotics allocation" },
-      { id:2, title:"Sponsor — CircuitWorks",    amount:12000, cat:"Sponsorship", type:"Income",  date:NOW-DAY*20, notes:"PCB fabrication sponsor" },
-      { id:3, title:"Stepper Motors + Drivers",  amount:6800,  cat:"Components",  type:"Expense", date:NOW-DAY*10, notes:"NEMA17 + TB6600 batch" },
-      { id:4, title:"RoboCon Registration",      amount:2500,  cat:"Competition", type:"Expense", date:NOW-DAY*5,  notes:"Team of 8 members" },
-      { id:5, title:"FR4 PCB Fabrication",       amount:1800,  cat:"Fabrication", type:"Expense", date:NOW,        notes:"5-layer, 10 boards" },
+      { id:1, title:"DLSU-D STEM Grant",        amount:25000, cat:"Grant",       type:"Income",  date:NOW-DAY*60, notes:"Annual robotics allocation" },
+      { id:2, title:"Sponsor — CircuitWorks",   amount:12000, cat:"Sponsorship", type:"Income",  date:NOW-DAY*20, notes:"PCB fabrication sponsor"    },
+      { id:3, title:"Stepper Motors + Drivers", amount:6800,  cat:"Components",  type:"Expense", date:NOW-DAY*10, notes:"NEMA17 + TB6600 batch"      },
+      { id:4, title:"RoboCon Registration",     amount:2500,  cat:"Competition", type:"Expense", date:NOW-DAY*5,  notes:"Team of 8 members"          },
+      { id:5, title:"FR4 PCB Fabrication",      amount:1800,  cat:"Fabrication", type:"Expense", date:NOW,        notes:"5-layer, 10 boards"         },
     ];
+
+    const defaultBlogs = [];
 
     /* ============================================================
        HELPERS
@@ -158,8 +136,157 @@
     const prioClr   = (p) => ({ Critical:C.ledRed,High:C.ledYellow,Medium:C.ledGreen,Low:C.silkDim }[p] || C.silkDim);
     const colClr    = (s) => ({ "To Do":C.silkDim,"In Progress":C.ledYellow,Review:C.ledBlue,Done:C.ledGreen }[s] || C.silkDim);
     const compClr   = (s) => ({ Upcoming:C.ledYellow,Ongoing:C.ledGreen,Completed:C.solder }[s] || C.silkDim);
+    const tagClr    = (t) => ({ Announcement:C.ledGreen,Hardware:C.ledBlue,Software:C.copper,Events:C.ledYellow,Finance:C.solder,Reminder:C.silkDim,Urgent:C.ledRed }[t] || C.silkDim);
 
     const avatarPalette = [C.copper, C.ledGreen, C.ledBlue, C.ledYellow, C.solder, C.copperBright];
+
+    /* ============================================================
+       CLOUD SYNC — REAL-TIME POLLING VERSION
+       • Loads data from Google Sheets on mount
+       • Polls every 15 s so all users see each other's changes
+       • Skips poll if a local save is in flight (avoids overwriting)
+       • Saves with debounce (800ms) and retry (up to 3x)
+       • Falls back to defaults if offline or URL not configured
+    ============================================================ */
+    const SYNC_STATUS = { idle:"idle", loading:"loading", synced:"synced", saving:"saving", error:"error" };
+    const POLL_INTERVAL = 15000; // ms between background polls
+
+    // Shared sync state so the status bar shows one unified indicator
+    const syncBus = { listeners: new Set(), status: SYNC_STATUS.idle, pending: 0 };
+    const emitSync = (status) => {
+      syncBus.status = status;
+      syncBus.listeners.forEach(fn => fn(status));
+    };
+
+    const useCloudSync = (key, defaultData) => {
+      const [data, setDataRaw] = useState(defaultData);
+      const debounceRef  = useRef(null);
+      const retryRef     = useRef(0);
+      const isSavingRef  = useRef(false); // true while a POST is in flight
+      const isReady      = GAS_URL && GAS_URL !== "YOUR_GOOGLE_APPS_SCRIPT_URL_HERE";
+
+      // ── Shared fetch helper ──
+      const fetchData = useCallback((quiet = false) => {
+        if (!isReady) return;
+        if (!quiet) emitSync(SYNC_STATUS.loading);
+        return fetch(`${GAS_URL}?action=get&key=${key}`, { mode: "cors" })
+          .then(r => r.json())
+          .then(res => {
+            if (res.ok && res.data !== undefined && res.data !== null) {
+              setDataRaw(res.data);
+            }
+            if (!quiet) emitSync(SYNC_STATUS.synced);
+          })
+          .catch(() => { if (!quiet) emitSync(SYNC_STATUS.error); });
+      }, [key, isReady]);
+
+      // ── LOAD on mount ──
+      useEffect(() => {
+        fetchData(false);
+      }, []);
+
+      // ── POLL every 15 s (skip if mid-save to avoid race) ──
+      useEffect(() => {
+        if (!isReady) return;
+        const timer = setInterval(() => {
+          if (!isSavingRef.current) fetchData(true);
+        }, POLL_INTERVAL);
+        return () => clearInterval(timer);
+      }, [fetchData, isReady]);
+
+      // ── SAVE with debounce + retry ──
+      const pushSave = useCallback((newData, attempt = 0) => {
+        if (!isReady) return;
+        isSavingRef.current = true;
+        emitSync(SYNC_STATUS.saving);
+        fetch(GAS_URL, {
+          method: "POST",
+          mode: "cors",
+          headers: { "Content-Type": "text/plain" },
+          body: JSON.stringify({ action: "set", key, data: newData }),
+        })
+          .then(r => r.json())
+          .then(res => {
+            if (res.ok) {
+              retryRef.current = 0;
+              isSavingRef.current = false;
+              emitSync(SYNC_STATUS.synced);
+            } else throw new Error("not ok");
+          })
+          .catch(() => {
+            if (attempt < 3) {
+              setTimeout(() => pushSave(newData, attempt + 1), 1500 * (attempt + 1));
+            } else {
+              isSavingRef.current = false;
+              emitSync(SYNC_STATUS.error);
+            }
+          });
+      }, [key, isReady]);
+
+      const setData = useCallback((newData) => {
+        setDataRaw(newData);
+        clearTimeout(debounceRef.current);
+        debounceRef.current = setTimeout(() => pushSave(newData), 800);
+      }, [pushSave]);
+
+      return [data, setData];
+    };
+
+    /* ============================================================
+       SYNC STATUS INDICATOR (top-right corner of sidebar)
+    ============================================================ */
+    const SyncDot = () => {
+      const [status, setStatus] = useState(syncBus.status);
+      const [countdown, setCountdown] = useState(POLL_INTERVAL / 1000);
+      useEffect(() => {
+        syncBus.listeners.add(setStatus);
+        return () => syncBus.listeners.delete(setStatus);
+      }, []);
+      // Countdown ticker so users can see when next poll fires
+      useEffect(() => {
+        const isReady = GAS_URL && GAS_URL !== "YOUR_GOOGLE_APPS_SCRIPT_URL_HERE";
+        if (!isReady) return;
+        setCountdown(POLL_INTERVAL / 1000);
+        const tick = setInterval(() => {
+          setCountdown(c => {
+            if (c <= 1) return POLL_INTERVAL / 1000;
+            return c - 1;
+          });
+        }, 1000);
+        return () => clearInterval(tick);
+      }, []);
+      const isReady = GAS_URL && GAS_URL !== "YOUR_GOOGLE_APPS_SCRIPT_URL_HERE";
+      if (!isReady) return (
+        <div style={{ display:"flex", alignItems:"center", gap:5 }}>
+          <div style={{ width:7, height:7, borderRadius:"50%", background:C.ledYellow, boxShadow:glow(C.ledYellow) }} />
+          <span style={{ color:C.ledYellow, fontFamily:FONT_MONO, fontSize:8, letterSpacing:2 }}>NO SYNC</span>
+        </div>
+      );
+      const map = {
+        idle:    { clr: C.silkDim,   label: "STANDBY" },
+        loading: { clr: C.ledBlue,   label: "LOADING" },
+        synced:  { clr: C.ledGreen,  label: "SYNCED"  },
+        saving:  { clr: C.ledYellow, label: "SAVING"  },
+        error:   { clr: C.ledRed,    label: "ERROR"   },
+      };
+      const { clr, label } = map[status] || map.idle;
+      return (
+        <div style={{ display:"flex", flexDirection:"column", gap:3 }}>
+          <div style={{ display:"flex", alignItems:"center", gap:5 }}>
+            <div style={{ width:7, height:7, borderRadius:"50%", background:clr, boxShadow:glow(clr),
+              animation: status==="loading"||status==="saving" ? "pulse 0.8s infinite alternate" : "none"
+            }} />
+            <span style={{ color:clr, fontFamily:FONT_MONO, fontSize:8, letterSpacing:2 }}>{label}</span>
+          </div>
+          {status==="synced"&&(
+            <div style={{color:C.copper+"55",fontFamily:FONT_MONO,fontSize:7,letterSpacing:1,paddingLeft:12}}>
+              POLL IN {countdown}s
+            </div>
+          )}
+          <style>{`@keyframes pulse { from { opacity:1 } to { opacity:0.3 } }`}</style>
+        </div>
+      );
+    };
 
     /* ============================================================
        PCB BACKGROUND
@@ -167,21 +294,18 @@
     const PCBBackground = () => {
       const traces = useMemo(() => {
         const arr = [];
-        for (let i = 0; i < 18; i++) { arr.push({ x1: 0, y1: (i * 5.8 + 2), x2: 100, y2: (i * 5.8 + 2), w: i % 3 === 0 ? 0.08 : 0.04, op: i % 4 === 0 ? 0.35 : 0.18 }); }
-        for (let i = 0; i < 22; i++) { arr.push({ x1: (i * 4.8 + 1), y1: 0, x2: (i * 4.8 + 1), y2: 100, w: i % 3 === 0 ? 0.06 : 0.03, op: i % 5 === 0 ? 0.3 : 0.15 }); }
-        for (let i = 0; i < 8; i++) { const x = (i * 14 + 5); arr.push({ x1: x, y1: 0, x2: x + 20, y2: 30, w: 0.05, op: 0.2 }); }
+        for (let i = 0; i < 18; i++) { arr.push({ x1:0, y1:(i*5.8+2), x2:100, y2:(i*5.8+2), w:i%3===0?0.08:0.04, op:i%4===0?0.35:0.18 }); }
+        for (let i = 0; i < 22; i++) { arr.push({ x1:(i*4.8+1), y1:0, x2:(i*4.8+1), y2:100, w:i%3===0?0.06:0.03, op:i%5===0?0.3:0.15 }); }
+        for (let i = 0; i < 8;  i++) { const x=(i*14+5); arr.push({ x1:x, y1:0, x2:x+20, y2:30, w:0.05, op:0.2 }); }
         return arr;
       }, []);
-
-      const vias = useMemo(() => Array.from({ length: 60 }, (_, i) => ({
-        x: ((i * 137 + 31) % 100), y: ((i * 89 + 17) % 100), r: i % 5 === 0 ? 0.55 : i % 3 === 0 ? 0.38 : 0.22,
-        o: i % 4 === 0 ? 0.7 : 0.35, isCopper: i % 7 === 0,
-      })), []);
-
-      const pads = useMemo(() => Array.from({ length: 20 }, (_, i) => ({ x: ((i * 233 + 50) % 95) + 2, y: ((i * 167 + 25) % 90) + 5, o: 0.18 })), []);
-
+      const vias = useMemo(() => Array.from({length:60},(_,i)=>({
+        x:((i*137+31)%100), y:((i*89+17)%100), r:i%5===0?0.55:i%3===0?0.38:0.22,
+        o:i%4===0?0.7:0.35, isCopper:i%7===0,
+      })),[]);
+      const pads = useMemo(() => Array.from({length:20},(_,i)=>({ x:((i*233+50)%95)+2, y:((i*167+25)%90)+5, o:0.18 })),[]);
       return (
-        <svg style={{ position: "fixed", inset: 0, width: "100%", height: "100%", pointerEvents: "none", zIndex: 0 }} preserveAspectRatio="xMidYMid slice" viewBox="0 0 100 100">
+        <svg style={{position:"fixed",inset:0,width:"100%",height:"100%",pointerEvents:"none",zIndex:0}} preserveAspectRatio="xMidYMid slice" viewBox="0 0 100 100">
           <defs>
             <radialGradient id="pcbGlow1" cx="85%" cy="10%" r="45%">
               <stop offset="0%" stopColor={C.copper} stopOpacity="0.06" />
@@ -195,14 +319,14 @@
           </defs>
           <rect width="100" height="100" fill="url(#pcbGlow1)" />
           <rect width="100" height="100" fill="url(#pcbGlow2)" />
-          {traces.map((t, i) => <line key={`t-${i}`} x1={t.x1+"%"} y1={t.y1+"%"} x2={t.x2+"%"} y2={t.y2+"%"} stroke={C.copper} strokeWidth={t.w+"%"} opacity={t.op} filter="url(#traceBlur)" />)}
-          {vias.map((v, i) => (
+          {traces.map((t,i)=><line key={`t-${i}`} x1={t.x1+"%"} y1={t.y1+"%"} x2={t.x2+"%"} y2={t.y2+"%"} stroke={C.copper} strokeWidth={t.w+"%"} opacity={t.op} filter="url(#traceBlur)" />)}
+          {vias.map((v,i)=>(
             <g key={`v-${i}`}>
-              <circle cx={v.x+"%"} cy={v.y+"%"} r={v.r+"%"} fill="none" stroke={v.isCopper ? C.copper : C.solder} strokeWidth="0.08%" opacity={v.o} />
-              <circle cx={v.x+"%"} cy={v.y+"%"} r={(v.r * 0.45)+"%"} fill={v.isCopper ? C.copper : C.solder} opacity={v.o * 0.6} />
+              <circle cx={v.x+"%"} cy={v.y+"%"} r={v.r+"%"} fill="none" stroke={v.isCopper?C.copper:C.solder} strokeWidth="0.08%" opacity={v.o} />
+              <circle cx={v.x+"%"} cy={v.y+"%"} r={(v.r*0.45)+"%"} fill={v.isCopper?C.copper:C.solder} opacity={v.o*0.6} />
             </g>
           ))}
-          {pads.map((p, i) => <rect key={`p-${i}`} x={(p.x - 0.6)+"%"} y={(p.y - 0.25)+"%"} width="1.2%" height="0.5%" rx="0.1%" fill={C.copper} opacity={p.o} />)}
+          {pads.map((p,i)=><rect key={`p-${i}`} x={(p.x-0.6)+"%"} y={(p.y-0.25)+"%"} width="1.2%" height="0.5%" rx="0.1%" fill={C.copper} opacity={p.o} />)}
         </svg>
       );
     };
@@ -212,81 +336,80 @@
     ============================================================ */
     const Badge = ({ text, color, sm }) => (
       <span style={{
-        fontFamily: FONT_MONO, fontWeight: 700, fontSize: sm ? 9 : 10,
-        color: color || C.ledGreen,
-        padding: sm ? "1px 7px" : "3px 10px", borderRadius: 3,
-        background: (color || C.ledGreen) + "18", border: `1px solid ${color || C.ledGreen}55`,
-        boxShadow: traceG(color || C.ledGreen), whiteSpace: "nowrap", letterSpacing: 0.8, textTransform: "uppercase",
+        fontFamily:FONT_MONO, fontWeight:700, fontSize:sm?9:10,
+        color:color||C.ledGreen, padding:sm?"1px 7px":"3px 10px", borderRadius:3,
+        background:(color||C.ledGreen)+"18", border:`1px solid ${color||C.ledGreen}55`,
+        boxShadow:traceG(color||C.ledGreen), whiteSpace:"nowrap", letterSpacing:0.8, textTransform:"uppercase",
       }}>{text}</span>
     );
 
     const Btn = ({ label, onClick, color, outline, sm, disabled, icon }) => {
-      const clr = color || C.ledGreen;
+      const clr = color||C.ledGreen;
       return (
         <button onClick={onClick} disabled={disabled} style={{
-          display: "inline-flex", alignItems: "center", gap: 6,
-          padding: sm ? "6px 14px" : "9px 20px",
-          background: outline ? "transparent" : disabled ? "#0d1a0d" : clr,
-          color: outline ? clr : disabled ? C.silkDim : C.maskDark,
-          border: `1.5px solid ${disabled ? "#1a2a1a" : clr}`,
-          borderRadius: 4, fontFamily: FONT_MONO, fontWeight: 700,
-          fontSize: sm ? 10 : 12, cursor: disabled ? "not-allowed" : "pointer",
-          transition: "all 0.15s", boxShadow: outline || disabled ? "none" : glow(clr),
-          letterSpacing: 1, textTransform: "uppercase",
+          display:"inline-flex", alignItems:"center", gap:6,
+          padding:sm?"6px 14px":"9px 20px",
+          background:outline?"transparent":disabled?"#0d1a0d":clr,
+          color:outline?clr:disabled?C.silkDim:C.maskDark,
+          border:`1.5px solid ${disabled?"#1a2a1a":clr}`,
+          borderRadius:4, fontFamily:FONT_MONO, fontWeight:700,
+          fontSize:sm?10:12, cursor:disabled?"not-allowed":"pointer",
+          transition:"all 0.15s", boxShadow:outline||disabled?"none":glow(clr),
+          letterSpacing:1, textTransform:"uppercase",
         }}>
-          {icon && <span style={{ fontSize: 13 }}>{icon}</span>}{label}
+          {icon&&<span style={{fontSize:13}}>{icon}</span>}{label}
         </button>
       );
     };
 
     const IconBtn = ({ icon, onClick, color, title }) => {
-      const clr = color || C.ledGreen;
+      const clr = color||C.ledGreen;
       return (
         <button onClick={onClick} title={title} style={{
-          width: 28, height: 28, borderRadius: 3, border: `1px solid ${clr}55`,
-          background: clr + "14", color: clr, fontFamily: FONT_MONO, fontSize: 11, fontWeight: 900,
-          cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", transition: "all 0.15s",
+          width:28, height:28, borderRadius:3, border:`1px solid ${clr}55`,
+          background:clr+"14", color:clr, fontFamily:FONT_MONO, fontSize:11, fontWeight:900,
+          cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", transition:"all 0.15s",
         }}>{icon}</button>
       );
     };
 
     const QtyControl = ({ value, onChange }) => (
-      <div style={{ display: "flex", alignItems: "center", gap: 5, padding: "3px 8px", background: C.maskCard2, borderRadius: 4, border: "1px solid " + C.traceBd }}>
-        <IconBtn icon="−" onClick={() => onChange(Math.max(0, value - 1))} color={C.ledRed} title="Dec" />
-        <span style={{ color: C.silk, fontFamily: FONT_MONO, fontWeight: 900, fontSize: 13, minWidth: 26, textAlign: "center" }}>{value}</span>
-        <IconBtn icon="+" onClick={() => onChange(value + 1)} color={C.ledGreen} title="Inc" />
+      <div style={{display:"flex",alignItems:"center",gap:5,padding:"3px 8px",background:C.maskCard2,borderRadius:4,border:"1px solid "+C.traceBd}}>
+        <IconBtn icon="−" onClick={()=>onChange(Math.max(0,value-1))} color={C.ledRed} title="Dec" />
+        <span style={{color:C.silk,fontFamily:FONT_MONO,fontWeight:900,fontSize:13,minWidth:26,textAlign:"center"}}>{value}</span>
+        <IconBtn icon="+" onClick={()=>onChange(value+1)} color={C.ledGreen} title="Inc" />
       </div>
     );
 
-    const HRule = () => <div style={{ height: 1, background: `linear-gradient(90deg, transparent, ${C.copper}44, ${C.copper}66, ${C.copper}44, transparent)`, margin: "6px 0" }} />;
+    const HRule = () => <div style={{height:1,background:`linear-gradient(90deg, transparent, ${C.copper}44, ${C.copper}66, ${C.copper}44, transparent)`,margin:"6px 0"}} />;
 
     const Card = ({ children, style, glowColor }) => (
       <div style={{
-        background: C.maskCard, borderRadius: 6,
-        border: `1px solid ${glowColor ? glowColor + "44" : C.maskBd}`,
-        boxShadow: glowColor ? `0 0 20px ${glowColor}0A, inset 0 1px 0 ${glowColor}11` : `inset 0 1px 0 ${C.copper}0A`,
-        position: "relative", overflow: "hidden", ...(style || {}),
+        background:C.maskCard, borderRadius:6,
+        border:`1px solid ${glowColor?glowColor+"44":C.maskBd}`,
+        boxShadow:glowColor?`0 0 20px ${glowColor}0A, inset 0 1px 0 ${glowColor}11`:`inset 0 1px 0 ${C.copper}0A`,
+        position:"relative", overflow:"hidden", ...(style||{}),
       }}>
-        <div style={{ position: "absolute", top: 4, left: 4, width: 8, height: 8, borderTop: `1px solid ${C.copper}33`, borderLeft: `1px solid ${C.copper}33`, pointerEvents: "none" }} />
-        <div style={{ position: "absolute", top: 4, right: 4, width: 8, height: 8, borderTop: `1px solid ${C.copper}33`, borderRight: `1px solid ${C.copper}33`, pointerEvents: "none" }} />
-        <div style={{ position: "absolute", bottom: 4, left: 4, width: 8, height: 8, borderBottom: `1px solid ${C.copper}33`, borderLeft: `1px solid ${C.copper}33`, pointerEvents: "none" }} />
-        <div style={{ position: "absolute", bottom: 4, right: 4, width: 8, height: 8, borderBottom: `1px solid ${C.copper}33`, borderRight: `1px solid ${C.copper}33`, pointerEvents: "none" }} />
+        <div style={{position:"absolute",top:4,left:4,width:8,height:8,borderTop:`1px solid ${C.copper}33`,borderLeft:`1px solid ${C.copper}33`,pointerEvents:"none"}} />
+        <div style={{position:"absolute",top:4,right:4,width:8,height:8,borderTop:`1px solid ${C.copper}33`,borderRight:`1px solid ${C.copper}33`,pointerEvents:"none"}} />
+        <div style={{position:"absolute",bottom:4,left:4,width:8,height:8,borderBottom:`1px solid ${C.copper}33`,borderLeft:`1px solid ${C.copper}33`,pointerEvents:"none"}} />
+        <div style={{position:"absolute",bottom:4,right:4,width:8,height:8,borderBottom:`1px solid ${C.copper}33`,borderRight:`1px solid ${C.copper}33`,pointerEvents:"none"}} />
         {children}
       </div>
     );
 
     const SectionTitle = ({ text, color, rightElement }) => {
-      const clr = color || C.ledGreen;
+      const clr = color||C.ledGreen;
       return (
-        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 0 }}>
-            <div style={{ width: 14, height: 1.5, background: clr, opacity: 0.6 }} />
-            <div style={{ width: 7, height: 7, borderRadius: "50%", background: clr, boxShadow: glow(clr), border: `1.5px solid ${clr}` }} />
-            <div style={{ width: 6, height: 1.5, background: clr, opacity: 0.6 }} />
+        <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:16}}>
+          <div style={{display:"flex",alignItems:"center",gap:0}}>
+            <div style={{width:14,height:1.5,background:clr,opacity:0.6}} />
+            <div style={{width:7,height:7,borderRadius:"50%",background:clr,boxShadow:glow(clr),border:`1.5px solid ${clr}`}} />
+            <div style={{width:6,height:1.5,background:clr,opacity:0.6}} />
           </div>
-          <span style={{ color: clr, fontFamily: FONT_MONO, fontWeight: 900, fontSize: 11, letterSpacing: 3, textTransform: "uppercase", whiteSpace: "nowrap" }}>{text}</span>
-          <div style={{ flex: 1, height: 1, background: `linear-gradient(90deg, ${clr}33, transparent)` }} />
-          {rightElement && <div>{rightElement}</div>}
+          <span style={{color:clr,fontFamily:FONT_MONO,fontWeight:900,fontSize:11,letterSpacing:3,textTransform:"uppercase",whiteSpace:"nowrap"}}>{text}</span>
+          <div style={{flex:1,height:1,background:`linear-gradient(90deg, ${clr}33, transparent)`}} />
+          {rightElement&&<div>{rightElement}</div>}
         </div>
       );
     };
@@ -296,26 +419,26 @@
     ============================================================ */
     const Modal = ({ title, onClose, children }) => (
       <div style={{
-        position: "fixed", inset: 0, background: "rgba(0,0,0,0.88)", zIndex: 9999,
-        display: "flex", alignItems: "center", justifyContent: "center", backdropFilter: "blur(6px)",
+        position:"fixed",inset:0,background:"rgba(0,0,0,0.88)",zIndex:9999,
+        display:"flex",alignItems:"center",justifyContent:"center",backdropFilter:"blur(6px)",
       }} onClick={onClose}>
         <div style={{
-          background: C.maskCard, border: `1px solid ${C.copper}55`, borderRadius: 8,
-          padding: 28, width: "90%", maxWidth: 480, maxHeight: "88vh", overflowY: "auto",
-          boxShadow: `0 0 60px ${C.copper}18, 0 0 120px rgba(0,0,0,0.8)`, position: "relative",
-        }} onClick={(e) => e.stopPropagation()}>
-          {["top-left","top-right","bottom-left","bottom-right"].map((pos,i) => {
-            const [v,h] = pos.split("-");
-            return <div key={i} style={{ position:"absolute", [v]: 8, [h]: 8, width:12, height:12, [`border${v.charAt(0).toUpperCase()+v.slice(1)}`]: `2px solid ${C.copper}88`, [`border${h.charAt(0).toUpperCase()+h.slice(1)}`]: `2px solid ${C.copper}88`, pointerEvents:"none" }}/>
+          background:C.maskCard, border:`1px solid ${C.copper}55`, borderRadius:8,
+          padding:28, width:"90%", maxWidth:480, maxHeight:"88vh", overflowY:"auto",
+          boxShadow:`0 0 60px ${C.copper}18, 0 0 120px rgba(0,0,0,0.8)`, position:"relative",
+        }} onClick={e=>e.stopPropagation()}>
+          {["top-left","top-right","bottom-left","bottom-right"].map((pos,i)=>{
+            const [v,h]=pos.split("-");
+            return <div key={i} style={{position:"absolute",[v]:8,[h]:8,width:12,height:12,[`border${v.charAt(0).toUpperCase()+v.slice(1)}`]:`2px solid ${C.copper}88`,[`border${h.charAt(0).toUpperCase()+h.slice(1)}`]:`2px solid ${C.copper}88`,pointerEvents:"none"}}/>
           })}
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 22 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <div style={{ width: 6, height: 6, borderRadius: "50%", background: C.copper, boxShadow: glow(C.copper) }} />
-              <span style={{ color: C.copper, fontFamily: FONT_MONO, fontWeight: 900, fontSize: 12, letterSpacing: 2 }}>{title}</span>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:22}}>
+            <div style={{display:"flex",alignItems:"center",gap:8}}>
+              <div style={{width:6,height:6,borderRadius:"50%",background:C.copper,boxShadow:glow(C.copper)}} />
+              <span style={{color:C.copper,fontFamily:FONT_MONO,fontWeight:900,fontSize:12,letterSpacing:2}}>{title}</span>
             </div>
             <button onClick={onClose} style={{
-              background: C.maskCard2, border: `1px solid ${C.traceBd}`, color: C.silkDim, width: 28, height: 28, borderRadius: 4,
-              cursor: "pointer", fontSize: 14, fontFamily: FONT_MONO, fontWeight: 700,
+              background:C.maskCard2, border:`1px solid ${C.traceBd}`, color:C.silkDim, width:28, height:28, borderRadius:4,
+              cursor:"pointer", fontSize:14, fontFamily:FONT_MONO, fontWeight:700,
             }}>×</button>
           </div>
           {children}
@@ -324,43 +447,50 @@
     );
 
     const Field = ({ label, value, onChange, type, placeholder }) => (
-      <div style={{ marginBottom: 13 }}>
-        <label style={{ display: "block", color: C.copper, fontFamily: FONT_MONO, fontSize: 9, fontWeight: 700, marginBottom: 5, letterSpacing: 2 }}>{label}</label>
+      <div style={{marginBottom:13}}>
+        <label style={{display:"block",color:C.copper,fontFamily:FONT_MONO,fontSize:9,fontWeight:700,marginBottom:5,letterSpacing:2}}>{label}</label>
         <input
-          type={type || "text"} value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder || ""}
-          style={{
-            width: "100%", boxSizing: "border-box", background: C.maskDark, border: `1px solid ${C.traceBd}`, borderRadius: 4, padding: "9px 12px",
-            color: C.silk, fontFamily: FONT_MONO, fontSize: 11, outline: "none", letterSpacing: 0.5,
-          }}
-          onFocus={(e) => { e.target.style.borderColor = C.copper + "88"; e.target.style.boxShadow = traceG(C.copper); }}
-          onBlur={(e) => { e.target.style.borderColor = C.traceBd; e.target.style.boxShadow = "none"; }}
+          type={type||"text"} value={value} onChange={e=>onChange(e.target.value)} placeholder={placeholder||""}
+          style={{width:"100%",boxSizing:"border-box",background:C.maskDark,border:`1px solid ${C.traceBd}`,borderRadius:4,padding:"9px 12px",color:C.silk,fontFamily:FONT_MONO,fontSize:11,outline:"none",letterSpacing:0.5}}
+          onFocus={e=>{e.target.style.borderColor=C.copper+"88";e.target.style.boxShadow=traceG(C.copper);}}
+          onBlur={e=>{e.target.style.borderColor=C.traceBd;e.target.style.boxShadow="none";}}
+        />
+      </div>
+    );
+
+    const TextArea = ({ label, value, onChange, rows }) => (
+      <div style={{marginBottom:13}}>
+        <label style={{display:"block",color:C.copper,fontFamily:FONT_MONO,fontSize:9,fontWeight:700,marginBottom:5,letterSpacing:2}}>{label}</label>
+        <textarea
+          value={value} onChange={e=>onChange(e.target.value)} rows={rows||4}
+          style={{width:"100%",boxSizing:"border-box",background:C.maskDark,border:`1px solid ${C.traceBd}`,borderRadius:4,padding:"9px 12px",color:C.silk,fontFamily:FONT_MONO,fontSize:11,outline:"none",letterSpacing:0.5,resize:"vertical"}}
+          onFocus={e=>{e.target.style.borderColor=C.copper+"88";e.target.style.boxShadow=traceG(C.copper);}}
+          onBlur={e=>{e.target.style.borderColor=C.traceBd;e.target.style.boxShadow="none";}}
         />
       </div>
     );
 
     const SelField = ({ label, value, onChange, options }) => (
-      <div style={{ marginBottom: 13 }}>
-        <label style={{ display: "block", color: C.copper, fontFamily: FONT_MONO, fontSize: 9, fontWeight: 700, marginBottom: 5, letterSpacing: 2 }}>{label}</label>
-        <select value={value} onChange={(e) => onChange(e.target.value)} style={{
-          width: "100%", background: C.maskDark, border: `1px solid ${C.traceBd}`, borderRadius: 4, padding: "9px 12px", color: C.silk, fontFamily: FONT_MONO, fontSize: 11, outline: "none",
-        }}>
-          {options.map((o) => <option key={o} value={o}>{o}</option>)}
+      <div style={{marginBottom:13}}>
+        <label style={{display:"block",color:C.copper,fontFamily:FONT_MONO,fontSize:9,fontWeight:700,marginBottom:5,letterSpacing:2}}>{label}</label>
+        <select value={value} onChange={e=>onChange(e.target.value)} style={{width:"100%",background:C.maskDark,border:`1px solid ${C.traceBd}`,borderRadius:4,padding:"9px 12px",color:C.silk,fontFamily:FONT_MONO,fontSize:11,outline:"none"}}>
+          {options.map(o=><option key={o} value={o}>{o}</option>)}
         </select>
       </div>
     );
 
     const SegControl = ({ label, value, onChange, options, colors }) => (
-      <div style={{ marginBottom: 13 }}>
-        {label && <label style={{ display: "block", color: C.copper, fontFamily: FONT_MONO, fontSize: 9, fontWeight: 700, marginBottom: 6, letterSpacing: 2 }}>{label}</label>}
-        <div style={{ display: "flex", gap: 5, flexWrap: "wrap" }}>
-          {options.map((o) => {
-            const sel = value === o;
-            const clr = (colors && colors[o]) || C.ledGreen;
+      <div style={{marginBottom:13}}>
+        {label&&<label style={{display:"block",color:C.copper,fontFamily:FONT_MONO,fontSize:9,fontWeight:700,marginBottom:6,letterSpacing:2}}>{label}</label>}
+        <div style={{display:"flex",gap:5,flexWrap:"wrap"}}>
+          {options.map(o=>{
+            const sel=value===o;
+            const clr=(colors&&colors[o])||C.ledGreen;
             return (
-              <div key={o} onClick={() => onChange(o)} style={{
-                padding: "5px 12px", borderRadius: 3, cursor: "pointer", background: sel ? clr + "22" : "transparent",
-                border: `1px solid ${sel ? clr : C.traceBd}`, color: sel ? clr : C.silkDim,
-                fontFamily: FONT_MONO, fontWeight: 700, fontSize: 9, transition: "all 0.15s", letterSpacing: 0.8, boxShadow: sel ? traceG(clr) : "none",
+              <div key={o} onClick={()=>onChange(o)} style={{
+                padding:"5px 12px",borderRadius:3,cursor:"pointer",background:sel?clr+"22":"transparent",
+                border:`1px solid ${sel?clr:C.traceBd}`,color:sel?clr:C.silkDim,
+                fontFamily:FONT_MONO,fontWeight:700,fontSize:9,transition:"all 0.15s",letterSpacing:0.8,boxShadow:sel?traceG(clr):"none",
               }}>{o}</div>
             );
           })}
@@ -370,164 +500,209 @@
 
     const SaveBtn = ({ onClick, disabled, label }) => (
       <button onClick={onClick} disabled={disabled} style={{
-        width: "100%", marginTop: 8, padding: "11px", background: disabled ? "#0a150a" : C.copper, color: disabled ? C.silkDim : C.maskDark,
-        border: "none", borderRadius: 4, fontFamily: FONT_MONO, fontWeight: 900, fontSize: 12, cursor: disabled ? "not-allowed" : "pointer",
-        letterSpacing: 2, textTransform: "uppercase", boxShadow: disabled ? "none" : glow(C.copper), transition: "all 0.2s",
-      }}>{label || "SAVE"}</button>
+        width:"100%",marginTop:8,padding:"11px",background:disabled?"#0a150a":C.copper,color:disabled?C.silkDim:C.maskDark,
+        border:"none",borderRadius:4,fontFamily:FONT_MONO,fontWeight:900,fontSize:12,cursor:disabled?"not-allowed":"pointer",
+        letterSpacing:2,textTransform:"uppercase",boxShadow:disabled?"none":glow(C.copper),transition:"all 0.2s",
+      }}>{label||"SAVE"}</button>
     );
 
     /* ============================================================
        SIDEBAR
     ============================================================ */
     const NAV = [
-      { id: "dashboard",    label: "Dashboard",    icon: "⊞", ref: "U1" },
-      { id: "inventory",    label: "Inventory",    icon: "≡", ref: "U2" },
-      { id: "members",      label: "Members",      icon: "⊕", ref: "U3" },
-      { id: "tasks",        label: "Tasks",        icon: "⊟", ref: "U4" },
-      { id: "competitions", label: "Competitions", icon: "◈", ref: "U5" },
-      { id: "budget",       label: "Budget",       icon: "⊠", ref: "U6" },
+      { id:"dashboard",    label:"Dashboard",    icon:"⊞", ref:"U1" },
+      { id:"inventory",    label:"Inventory",    icon:"≡", ref:"U2" },
+      { id:"members",      label:"Members",      icon:"⊕", ref:"U3" },
+      { id:"tasks",        label:"Tasks",        icon:"⊟", ref:"U4" },
+      { id:"competitions", label:"Competitions", icon:"◈", ref:"U5" },
+      { id:"budget",       label:"Budget",       icon:"⊠", ref:"U6" },
+      { id:"blog",         label:"Blog",         icon:"✎", ref:"U7" },
     ];
 
-    const Sidebar = ({ active, setActive, alertCount }) => (
-      <aside style={{
-        width: 230, minHeight: "100vh", background: `linear-gradient(180deg, ${C.maskDark} 0%, ${C.maskMid} 100%)`, borderRight: `2px solid ${C.copper}55`,
-        display: "flex", flexDirection: "column", flexShrink: 0, position: "sticky", top: 0, height: "100vh", overflow: "auto",
-        boxShadow: `4px 0 24px rgba(0,0,0,0.5), inset -1px 0 0 ${C.copper}22`,
-      }}>
-        <div style={{ padding: "24px 20px 18px", textAlign: "center", position: "relative" }}>
-          <div style={{ position: "absolute", top: 0, left: "50%", transform: "translateX(-50%)", width: 40, height: 8, background: C.maskDark, borderRadius: "0 0 20px 20px", border: `1px solid ${C.copper}44`, borderTop: "none" }} />
+    const Sidebar = ({ active, setActive, alertCount }) => {
+      const [collapsed, setCollapsed] = useState(false);
+      const w = collapsed ? 56 : 230;
+      return (
+        <aside style={{
+          width:w, minHeight:"100vh",
+          background:`linear-gradient(180deg, ${C.maskDark} 0%, ${C.maskMid} 100%)`,
+          borderRight:`2px solid ${C.copper}55`,
+          display:"flex", flexDirection:"column", flexShrink:0,
+          position:"sticky", top:0, height:"100vh", overflow:"hidden",
+          boxShadow:`4px 0 24px rgba(0,0,0,0.5), inset -1px 0 0 ${C.copper}22`,
+          transition:"width 0.25s cubic-bezier(.4,0,.2,1)",
+        }}>
+          {/* ── Toggle arrow button ── */}
+          <button
+            onClick={()=>setCollapsed(c=>!c)}
+            title={collapsed?"Expand sidebar":"Collapse sidebar"}
+            style={{
+              position:"absolute", top:"50%", right:-14, transform:"translateY(-50%)",
+              zIndex:10, width:28, height:28, borderRadius:"50%",
+              background:C.maskCard, border:`1.5px solid ${C.copper}88`,
+              color:C.copper, fontSize:12, fontFamily:FONT_MONO, fontWeight:900,
+              cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center",
+              boxShadow:`0 0 12px ${C.copper}44`,
+              transition:"transform 0.25s",
+            }}
+          >{collapsed ? "▶" : "◀"}</button>
+
+          {/* ── Logo block (hidden when collapsed) ── */}
           <div style={{
-            width: 80, height: 80, margin: "0 auto 14px", background: `linear-gradient(145deg, ${C.maskCard} 0%, ${C.maskCard2} 100%)`,
-            border: `2px solid ${C.copper}77`, borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center",
-            position: "relative", boxShadow: `0 0 20px ${C.copper}22, inset 0 0 20px rgba(0,0,0,0.4)`,
+            padding:"24px 20px 18px", textAlign:"center", position:"relative",
+            opacity:collapsed?0:1, transition:"opacity 0.15s",
+            pointerEvents:collapsed?"none":"auto", overflow:"hidden", whiteSpace:"nowrap",
           }}>
-            <div style={{ position: "absolute", top: 6, left: 6, width: 5, height: 5, borderRadius: "50%", background: C.copper, opacity: 0.7 }} />
-            <div style={{ textAlign: "center" }}>
-              <div style={{ color: C.copper, fontFamily: FONT_MONO, fontWeight: 900, fontSize: 20, letterSpacing: -1, lineHeight: 1 }}>AS</div>
-              <div style={{ color: C.copperDim, fontFamily: FONT_MONO, fontSize: 7, letterSpacing: 1, marginTop: 2 }}>2026</div>
-            </div>
-            {[0,1,2].map(i => <div key={`lp-${i}`} style={{ position:"absolute", left:-8, top: 18 + i*16, width:8, height:3, background:C.copper, borderRadius:"2px 0 0 2px", opacity:0.6 }}/>)}
-            {[0,1,2].map(i => <div key={`rp-${i}`} style={{ position:"absolute", right:-8, top: 18 + i*16, width:8, height:3, background:C.copper, borderRadius:"0 2px 2px 0", opacity:0.6 }}/>)}
-          </div>
-          <div style={{ color: C.copper, fontFamily: FONT_MONO, fontWeight: 900, fontSize: 16, letterSpacing: 4, textTransform: "uppercase" }}>ANIMO SPEAR</div>
-          <div style={{ color: C.silk, fontFamily: FONT_MONO, fontSize: 9, marginTop: 4, letterSpacing: 1.5 }}>Student Patriots of</div>
-          <div style={{ color: C.silk, fontFamily: FONT_MONO, fontSize: 9, letterSpacing: 1.5 }}>Engineering & Robotics</div>
-          <div style={{ color: C.silkDim, fontFamily: FONT_MONO, fontSize: 8, marginTop: 3 }}>DLSU-D High School</div>
-          <div style={{
-            display: "inline-flex", alignItems: "center", gap: 5, marginTop: 10, padding: "4px 10px", borderRadius: 3, background: C.copper + "18", border: `1px solid ${C.copper}44`, boxShadow: traceG(C.copper),
-          }}>
-            <div style={{ width: 5, height: 5, borderRadius: "50%", background: C.copper, boxShadow: glow(C.copper) }} />
-            <span style={{ color: C.copper, fontFamily: FONT_MONO, fontSize: 8, fontWeight: 700, letterSpacing: 2 }}>ROBOCON READY</span>
-          </div>
-        </div>
-        <HRule />
-        <div style={{ padding: "4px 20px", display:"flex", justifyContent:"space-between" }}>
-          <span style={{ color: C.copper + "55", fontFamily: FONT_MONO, fontSize: 7, letterSpacing: 1 }}>VCC</span>
-          <span style={{ color: C.copper + "55", fontFamily: FONT_MONO, fontSize: 7, letterSpacing: 1 }}>GND</span>
-        </div>
-        <nav style={{ padding: "8px 12px", flex: 1 }}>
-          {NAV.map((n, idx) => {
-            const sel = active === n.id;
-            const badge = n.id === "inventory" ? alertCount : 0;
-            return (
-              <div key={n.id} onClick={() => setActive(n.id)} style={{
-                display: "flex", alignItems: "center", gap: 10, padding: "9px 12px", borderRadius: 4, marginBottom: 3,
-                background: sel ? C.copper + "18" : "transparent", borderLeft: sel ? `3px solid ${C.copper}` : `3px solid transparent`,
-                cursor: "pointer", transition: "all 0.15s", position: "relative",
-              }}>
-                <span style={{ color: C.copper + "55", fontFamily: FONT_MONO, fontSize: 7, width: 12, textAlign: "right", flexShrink: 0 }}>{idx + 1}</span>
-                <span style={{ color: sel ? C.copper : C.silkDim, fontSize: 13, width: 16, textAlign: "center" }}>{n.icon}</span>
-                <span style={{ color: sel ? C.silk : C.silk + "99", fontFamily: FONT_MONO, fontWeight: sel ? 700 : 400, fontSize: 11, flex: 1, letterSpacing: 0.8 }}>{n.label}</span>
-                <span style={{ color: C.copper + "44", fontFamily: FONT_MONO, fontSize: 7 }}>{n.ref}</span>
-                {badge > 0 && <span style={{ background: C.ledRed, color: "#fff", borderRadius: 2, padding: "1px 5px", fontSize: 8, fontWeight: 900, fontFamily: FONT_MONO, boxShadow: glow(C.ledRed) }}>{badge}</span>}
-                {sel && <div style={{ position:"absolute", right:0, top:"50%", transform:"translateY(-50%)", width:3, height:16, background:C.copper, borderRadius:"2px 0 0 2px", boxShadow: glow(C.copper) }}/>}
+            <div style={{position:"absolute",top:0,left:"50%",transform:"translateX(-50%)",width:40,height:8,background:C.maskDark,borderRadius:"0 0 20px 20px",border:`1px solid ${C.copper}44`,borderTop:"none"}} />
+            <div style={{
+              width:80, height:80, margin:"0 auto 14px",
+              background:`linear-gradient(145deg, ${C.maskCard} 0%, ${C.maskCard2} 100%)`,
+              border:`2px solid ${C.copper}77`, borderRadius:8,
+              display:"flex", alignItems:"center", justifyContent:"center",
+              position:"relative", boxShadow:`0 0 20px ${C.copper}22, inset 0 0 20px rgba(0,0,0,0.4)`,
+            }}>
+              <div style={{position:"absolute",top:6,left:6,width:5,height:5,borderRadius:"50%",background:C.copper,opacity:0.7}} />
+              <div style={{textAlign:"center"}}>
+                <div style={{color:C.copper,fontFamily:FONT_MONO,fontWeight:900,fontSize:20,letterSpacing:-1,lineHeight:1}}>AS</div>
+                <div style={{color:C.copperDim,fontFamily:FONT_MONO,fontSize:7,letterSpacing:1,marginTop:2}}>2026</div>
               </div>
-            );
-          })}
-        </nav>
-        <div style={{ padding: "12px 16px" }}>
-          <HRule />
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 10 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
-              <div style={{ width: 7, height: 7, borderRadius: "50%", background: C.ledGreen, boxShadow: glow(C.ledGreen) }} />
-              <span style={{ color: C.ledGreen, fontFamily: FONT_MONO, fontSize: 8, letterSpacing: 2 }}>ONLINE</span>
+              {[0,1,2].map(i=><div key={`lp-${i}`} style={{position:"absolute",left:-8,top:18+i*16,width:8,height:3,background:C.copper,borderRadius:"2px 0 0 2px",opacity:0.6}}/>)}
+              {[0,1,2].map(i=><div key={`rp-${i}`} style={{position:"absolute",right:-8,top:18+i*16,width:8,height:3,background:C.copper,borderRadius:"0 2px 2px 0",opacity:0.6}}/>)}
             </div>
-            <span style={{ color: C.silkDim, fontFamily: FONT_MONO, fontSize: 7, letterSpacing: 1 }}>REV 2.0</span>
+            <div style={{color:C.copper,fontFamily:FONT_MONO,fontWeight:900,fontSize:16,letterSpacing:4,textTransform:"uppercase"}}>ANIMO SPEAR</div>
+            <div style={{color:C.silk,fontFamily:FONT_MONO,fontSize:9,marginTop:4,letterSpacing:1.5}}>Student Patriots of</div>
+            <div style={{color:C.silk,fontFamily:FONT_MONO,fontSize:9,letterSpacing:1.5}}>Engineering & Robotics</div>
+            <div style={{color:C.silkDim,fontFamily:FONT_MONO,fontSize:8,marginTop:3}}>DLSU-D High School</div>
+            <div style={{display:"inline-flex",alignItems:"center",gap:5,marginTop:10,padding:"4px 10px",borderRadius:3,background:C.copper+"18",border:`1px solid ${C.copper}44`,boxShadow:traceG(C.copper)}}>
+              <div style={{width:5,height:5,borderRadius:"50%",background:C.copper,boxShadow:glow(C.copper)}} />
+              <span style={{color:C.copper,fontFamily:FONT_MONO,fontSize:8,fontWeight:700,letterSpacing:2}}>ROBOCON READY</span>
+            </div>
           </div>
-          <div style={{ marginTop: 8, color: C.copper + "44", fontFamily: FONT_MONO, fontSize: 7, letterSpacing: 1, textAlign: "center" }}>ANIMO-SPEAR-PCB-001</div>
-        </div>
-      </aside>
-    );
+
+          {/* Divider shown only when expanded */}
+          {!collapsed && <HRule />}
+          {!collapsed && (
+            <div style={{padding:"4px 20px",display:"flex",justifyContent:"space-between"}}>
+              <span style={{color:C.copper+"55",fontFamily:FONT_MONO,fontSize:7,letterSpacing:1}}>VCC</span>
+              <span style={{color:C.copper+"55",fontFamily:FONT_MONO,fontSize:7,letterSpacing:1}}>GND</span>
+            </div>
+          )}
+
+          {/* ── Nav items ── */}
+          <nav style={{padding:collapsed?"8px 4px":"8px 12px", flex:1, marginTop:collapsed?12:0}}>
+            {NAV.map((n,idx)=>{
+              const sel=active===n.id;
+              const badge=n.id==="inventory"?alertCount:0;
+              return (
+                <div key={n.id} onClick={()=>setActive(n.id)} title={collapsed?n.label:""} style={{
+                  display:"flex", alignItems:"center", gap:collapsed?0:10,
+                  padding:collapsed?"10px 0":"9px 12px",
+                  justifyContent:collapsed?"center":"flex-start",
+                  borderRadius:4, marginBottom:3,
+                  background:sel?C.copper+"18":"transparent",
+                  borderLeft:collapsed?"none":(sel?`3px solid ${C.copper}`:`3px solid transparent`),
+                  cursor:"pointer", transition:"all 0.15s", position:"relative",
+                }}>
+                  {!collapsed && <span style={{color:C.copper+"55",fontFamily:FONT_MONO,fontSize:7,width:12,textAlign:"right",flexShrink:0}}>{idx+1}</span>}
+                  <span style={{color:sel?C.copper:C.silkDim,fontSize:collapsed?18:13,width:collapsed?32:16,textAlign:"center",position:"relative"}}>
+                    {n.icon}
+                    {badge>0&&collapsed&&(
+                      <span style={{position:"absolute",top:-4,right:-2,background:C.ledRed,color:"#fff",borderRadius:"50%",width:10,height:10,fontSize:7,fontWeight:900,display:"flex",alignItems:"center",justifyContent:"center"}}>{badge}</span>
+                    )}
+                  </span>
+                  {!collapsed && <span style={{color:sel?C.silk:C.silk+"99",fontFamily:FONT_MONO,fontWeight:sel?700:400,fontSize:11,flex:1,letterSpacing:0.8}}>{n.label}</span>}
+                  {!collapsed && <span style={{color:C.copper+"44",fontFamily:FONT_MONO,fontSize:7}}>{n.ref}</span>}
+                  {!collapsed && badge>0&&<span style={{background:C.ledRed,color:"#fff",borderRadius:2,padding:"1px 5px",fontSize:8,fontWeight:900,fontFamily:FONT_MONO,boxShadow:glow(C.ledRed)}}>{badge}</span>}
+                  {sel&&!collapsed&&<div style={{position:"absolute",right:0,top:"50%",transform:"translateY(-50%)",width:3,height:16,background:C.copper,borderRadius:"2px 0 0 2px",boxShadow:glow(C.copper)}}/>}
+                  {sel&&collapsed&&<div style={{position:"absolute",left:0,top:"50%",transform:"translateY(-50%)",width:3,height:24,background:C.copper,borderRadius:"0 2px 2px 0",boxShadow:glow(C.copper)}}/>}
+                </div>
+              );
+            })}
+          </nav>
+
+          {/* ── Footer (sync dot + version) ── */}
+          <div style={{padding:collapsed?"8px 4px":"12px 16px", textAlign:collapsed?"center":"left"}}>
+            {!collapsed && <HRule />}
+            <div style={{display:"flex",alignItems:"center",justifyContent:collapsed?"center":"space-between",marginTop:collapsed?0:10}}>
+              <SyncDot />
+              {!collapsed && <span style={{color:C.silkDim,fontFamily:FONT_MONO,fontSize:7,letterSpacing:1}}>REV 2.1</span>}
+            </div>
+            {!collapsed && <div style={{marginTop:8,color:C.copper+"44",fontFamily:FONT_MONO,fontSize:7,letterSpacing:1,textAlign:"center"}}>ANIMO-SPEAR-PCB-001</div>}
+          </div>
+        </aside>
+      );
+    };
 
     /* ============================================================
        VIEWS
     ============================================================ */
     const Dashboard = ({ store, setActive }) => {
-      const { parts, members, tasks, comps, budget } = store;
-      const income   = budget.filter(b => b.type === "Income").reduce((s, b) => s + b.amount, 0);
-      const expense  = budget.filter(b => b.type === "Expense").reduce((s, b) => s + b.amount, 0);
-      const balance  = income - expense;
-      const active   = tasks.filter(t => t.status !== "Done");
-      const lowParts = parts.filter(p => p.status === "Low Stock" || p.status === "Out of Stock");
-      const overdue  = tasks.filter(t => t.due < NOW && t.status !== "Done");
-      const nextComp = comps.filter(c => c.status === "Upcoming").sort((a, b) => a.date - b.date)[0];
-      const daysTo   = nextComp ? Math.max(0, Math.round((nextComp.date - NOW) / DAY)) : 0;
+      const { parts, members, tasks, comps, budget, blogs } = store;
+      const income   = budget.filter(b=>b.type==="Income").reduce((s,b)=>s+b.amount,0);
+      const expense  = budget.filter(b=>b.type==="Expense").reduce((s,b)=>s+b.amount,0);
+      const balance  = income-expense;
+      const active   = tasks.filter(t=>t.status!=="Done");
+      const lowParts = parts.filter(p=>p.status==="Low Stock"||p.status==="Out of Stock");
+      const overdue  = tasks.filter(t=>t.due<NOW&&t.status!=="Done");
+      const nextComp = comps.filter(c=>c.status==="Upcoming").sort((a,b)=>a.date-b.date)[0];
+      const daysTo   = nextComp?Math.max(0,Math.round((nextComp.date-NOW)/DAY)):0;
+      const pinned   = [...blogs].sort((a,b)=>b.createdAt-a.createdAt).slice(0,3);
 
       const stats = [
-        { label: "COMPONENTS", val: parts.length,          sub: parts.filter(p => p.status === "Available").length + " available", color: C.ledGreen,  icon: "⬡", ref: "IC1" },
-        { label: "CREW",       val: members.filter(m => m.active).length, sub: "active members",                                        color: C.copper,    icon: "⬡", ref: "IC2" },
-        { label: "TASKS",      val: active.length,         sub: "open tasks",                                                         color: C.ledYellow, icon: "⬡", ref: "IC3" },
-        { label: "BALANCE",    val: "₱" + money(balance),  sub: balance >= 0 ? "surplus" : "deficit",                                 color: balance >= 0 ? C.ledGreen : C.ledRed, icon: "⬡", ref: "IC4" },
+        { label:"COMPONENTS", val:parts.length,                          sub:parts.filter(p=>p.status==="Available").length+" available", color:C.ledGreen,  ref:"IC1" },
+        { label:"CREW",       val:members.filter(m=>m.active).length,    sub:"active members",                                            color:C.copper,    ref:"IC2" },
+        { label:"TASKS",      val:active.length,                         sub:"open tasks",                                                color:C.ledYellow, ref:"IC3" },
+        { label:"BALANCE",    val:"₱"+money(balance),                    sub:balance>=0?"surplus":"deficit",                              color:balance>=0?C.ledGreen:C.ledRed, ref:"IC4" },
       ];
 
       return (
-        <div style={{ padding: 28 }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 28 }}>
+        <div style={{padding:28}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:28}}>
             <div>
-              <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 4 }}>
-                <div style={{ width: 8, height: 8, borderRadius: "50%", background: C.ledGreen, boxShadow: `0 0 8px ${C.ledGreen}, 0 0 16px ${C.ledGreen}88` }} />
-                <h1 style={{ margin: 0, fontFamily: FONT_MONO, fontWeight: 900, fontSize: 26, letterSpacing: 4, color: C.copper, textShadow: `0 0 20px ${C.copper}44` }}>CIRCUIT CONTROL</h1>
+              <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:4}}>
+                <div style={{width:8,height:8,borderRadius:"50%",background:C.ledGreen,boxShadow:`0 0 8px ${C.ledGreen}, 0 0 16px ${C.ledGreen}88`}} />
+                <h1 style={{margin:0,fontFamily:FONT_MONO,fontWeight:900,fontSize:26,letterSpacing:4,color:C.copper,textShadow:`0 0 20px ${C.copper}44`}}>CIRCUIT CONTROL</h1>
               </div>
-              <p style={{ margin: "6px 0 0", color: C.silkDim, fontFamily: FONT_MONO, fontSize: 10, letterSpacing: 1.5 }}>ANIMO SPEAR • DLSU-D High School Robotics • 2026 Season</p>
+              <p style={{margin:"6px 0 0",color:C.silkDim,fontFamily:FONT_MONO,fontSize:10,letterSpacing:1.5}}>ANIMO SPEAR • DLSU-D High School Robotics • 2026 Season</p>
             </div>
-            <div style={{ textAlign: "right" }}>
-              <div style={{ color: C.silk, fontFamily: FONT_MONO, fontSize: 11, fontWeight: 700 }}>{fdate(NOW)}</div>
-              <div style={{ color: C.ledYellow, fontFamily: FONT_MONO, fontSize: 10, marginTop: 4, fontWeight: 700, letterSpacing: 1 }}>T−{daysTo} DAYS TO {nextComp?.name.toUpperCase() || "NEXT EVENT"}</div>
+            <div style={{textAlign:"right"}}>
+              <div style={{color:C.silk,fontFamily:FONT_MONO,fontSize:11,fontWeight:700}}>{fdate(NOW)}</div>
+              <div style={{color:C.ledYellow,fontFamily:FONT_MONO,fontSize:10,marginTop:4,fontWeight:700,letterSpacing:1}}>T−{daysTo} DAYS TO {nextComp?.name.toUpperCase()||"NEXT EVENT"}</div>
             </div>
           </div>
 
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 14, marginBottom: 22 }}>
-            {stats.map((s) => (
-              <Card key={s.label} style={{ padding: 18 }} glowColor={s.color}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 10 }}>
-                  <span style={{ color: C.copper + "66", fontFamily: FONT_MONO, fontSize: 7, letterSpacing: 1 }}>{s.ref}</span>
-                  <div style={{ width: 5, height: 5, borderRadius: "50%", background: s.color, boxShadow: glow(s.color) }} />
+          <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:14,marginBottom:22}}>
+            {stats.map(s=>(
+              <Card key={s.label} style={{padding:18}} glowColor={s.color}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:10}}>
+                  <span style={{color:C.copper+"66",fontFamily:FONT_MONO,fontSize:7,letterSpacing:1}}>{s.ref}</span>
+                  <div style={{width:5,height:5,borderRadius:"50%",background:s.color,boxShadow:glow(s.color)}} />
                 </div>
-                <div style={{ color: s.color, fontFamily: FONT_MONO, fontWeight: 900, fontSize: 30, marginBottom: 4, lineHeight: 1 }}>{s.val}</div>
-                <div style={{ color: C.copper + "88", fontFamily: FONT_MONO, fontSize: 8, fontWeight: 700, letterSpacing: 2, marginBottom: 4, textTransform: "uppercase" }}>{s.label}</div>
-                <div style={{ color: C.silkDim, fontFamily: FONT_MONO, fontSize: 9, marginTop: 2 }}>{s.sub}</div>
+                <div style={{color:s.color,fontFamily:FONT_MONO,fontWeight:900,fontSize:30,marginBottom:4,lineHeight:1}}>{s.val}</div>
+                <div style={{color:C.copper+"88",fontFamily:FONT_MONO,fontSize:8,fontWeight:700,letterSpacing:2,marginBottom:4,textTransform:"uppercase"}}>{s.label}</div>
+                <div style={{color:C.silkDim,fontFamily:FONT_MONO,fontSize:9,marginTop:2}}>{s.sub}</div>
               </Card>
             ))}
           </div>
 
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 20 }}>
-            <Card style={{ padding: 20 }} glowColor={(lowParts.length + overdue.length) > 0 ? C.ledYellow : C.ledGreen}>
-              <SectionTitle text="System Alerts" color={(lowParts.length + overdue.length) > 0 ? C.ledYellow : C.ledGreen} />
-              {(lowParts.length === 0 && overdue.length === 0) ? (
-                <div style={{ display: "flex", alignItems: "center", gap: 8, color: C.ledGreen, fontFamily: FONT_MONO, fontSize: 11, padding: "10px 0" }}>
-                  <span style={{ fontSize: 16 }}>✓</span> ALL SYSTEMS NOMINAL
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16,marginBottom:20}}>
+            <Card style={{padding:20}} glowColor={(lowParts.length+overdue.length)>0?C.ledYellow:C.ledGreen}>
+              <SectionTitle text="System Alerts" color={(lowParts.length+overdue.length)>0?C.ledYellow:C.ledGreen} />
+              {(lowParts.length===0&&overdue.length===0)?(
+                <div style={{display:"flex",alignItems:"center",gap:8,color:C.ledGreen,fontFamily:FONT_MONO,fontSize:11,padding:"10px 0"}}>
+                  <span style={{fontSize:16}}>✓</span> ALL SYSTEMS NOMINAL
                 </div>
-              ) : (
-                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                  {lowParts.map(p => (
-                    <div key={p.id} style={{ display: "flex", justifyContent: "space-between", background: C.maskCard2, padding: "8px 12px", borderRadius: 4, borderLeft: `2px solid ${statusClr(p.status)}` }}>
-                      <span style={{ color: C.silk, fontSize: 11 }}>{p.name} ({p.qty} left)</span>
+              ):(
+                <div style={{display:"flex",flexDirection:"column",gap:8}}>
+                  {lowParts.map(p=>(
+                    <div key={p.id} style={{display:"flex",justifyContent:"space-between",background:C.maskCard2,padding:"8px 12px",borderRadius:4,borderLeft:`2px solid ${statusClr(p.status)}`}}>
+                      <span style={{color:C.silk,fontSize:11}}>{p.name} ({p.qty} left)</span>
                       <Badge text={p.status} color={statusClr(p.status)} sm />
                     </div>
                   ))}
-                  {overdue.map(t => (
-                    <div key={t.id} style={{ display: "flex", justifyContent: "space-between", background: C.maskCard2, padding: "8px 12px", borderRadius: 4, borderLeft: `2px solid ${C.ledRed}` }}>
-                      <span style={{ color: C.silk, fontSize: 11 }}>{t.title}</span>
+                  {overdue.map(t=>(
+                    <div key={t.id} style={{display:"flex",justifyContent:"space-between",background:C.maskCard2,padding:"8px 12px",borderRadius:4,borderLeft:`2px solid ${C.ledRed}`}}>
+                      <span style={{color:C.silk,fontSize:11}}>{t.title}</span>
                       <Badge text="OVERDUE" color={C.ledRed} sm />
                     </div>
                   ))}
@@ -535,16 +710,38 @@
               )}
             </Card>
 
-            <Card style={{ padding: 20 }}>
+            <Card style={{padding:20}}>
               <SectionTitle text="Quick Actions" color={C.copper} />
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-                <Btn label="New Task" icon="⊟" onClick={() => setActive('tasks')} outline color={C.ledYellow} />
-                <Btn label="Add Component" icon="≡" onClick={() => setActive('inventory')} outline color={C.ledBlue} />
-                <Btn label="Add Member" icon="⊕" onClick={() => setActive('members')} outline color={C.copper} />
-                <Btn label="Log Expense" icon="⊠" onClick={() => setActive('budget')} outline color={C.ledRed} />
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+                <Btn label="New Task"       icon="⊟" onClick={()=>setActive('tasks')}       outline color={C.ledYellow} />
+                <Btn label="Add Component"  icon="≡" onClick={()=>setActive('inventory')}   outline color={C.ledBlue}   />
+                <Btn label="Add Member"     icon="⊕" onClick={()=>setActive('members')}     outline color={C.copper}    />
+                <Btn label="Log Expense"    icon="⊠" onClick={()=>setActive('budget')}      outline color={C.ledRed}    />
               </div>
             </Card>
           </div>
+
+          {/* ── LATEST ANNOUNCEMENTS on Dashboard ── */}
+          {pinned.length > 0 && (
+            <Card style={{padding:20}} glowColor={C.ledGreen}>
+              <SectionTitle text="Latest Transmissions" color={C.ledGreen} rightElement={<Btn label="View All" sm outline color={C.ledGreen} onClick={()=>setActive('blog')} />} />
+              <div style={{display:"flex",flexDirection:"column",gap:10}}>
+                {pinned.map(post=>(
+                  <div key={post.id} style={{background:C.maskCard2,borderRadius:4,padding:"10px 14px",borderLeft:`2px solid ${tagClr(post.tag)}`}}>
+                    <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:4}}>
+                      <Badge text={post.tag} color={tagClr(post.tag)} sm />
+                      <span style={{color:C.silk,fontFamily:FONT_MONO,fontWeight:700,fontSize:12}}>{post.title}</span>
+                    </div>
+                    <div style={{color:C.silkDim,fontFamily:FONT_MONO,fontSize:10,whiteSpace:"pre-wrap",lineHeight:1.5,
+                      overflow:"hidden",display:"-webkit-box",WebkitLineClamp:2,WebkitBoxOrient:"vertical"}}>
+                      {post.body}
+                    </div>
+                    <div style={{color:C.copper+"88",fontFamily:FONT_MONO,fontSize:8,marginTop:6}}>{fdate(post.createdAt)}{post.author?" • "+post.author:""}</div>
+                  </div>
+                ))}
+              </div>
+            </Card>
+          )}
         </div>
       );
     };
@@ -552,62 +749,56 @@
     const Inventory = ({ store }) => {
       const { parts, setParts } = store;
       const [editPart, setEditPart] = useState(null);
-
       const handleSave = () => {
         if (!editPart.name) return;
-        if (editPart.id) {
-          setParts(parts.map(p => p.id === editPart.id ? editPart : p));
-        } else {
-          setParts([...parts, { ...editPart, id: uid() }]);
-        }
+        if (editPart.id) { setParts(parts.map(p=>p.id===editPart.id?editPart:p)); }
+        else { setParts([...parts,{...editPart,id:uid()}]); }
         setEditPart(null);
       };
-
       return (
-        <div style={{ padding: 28 }}>
-          <SectionTitle text="Component Inventory" color={C.ledBlue} rightElement={<Btn label="Add Part" sm color={C.ledBlue} onClick={() => setEditPart({ name:"", category:"Actuators", qty:0, min:1, loc:"", status:"Available", notes:"" })} />} />
+        <div style={{padding:28}}>
+          <SectionTitle text="Component Inventory" color={C.ledBlue} rightElement={<Btn label="Add Part" sm color={C.ledBlue} onClick={()=>setEditPart({name:"",category:"Actuators",qty:0,min:1,loc:"",status:"Available",notes:""})} />} />
           <Card>
-            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 11, textAlign: "left" }}>
+            <table style={{width:"100%",borderCollapse:"collapse",fontSize:11,textAlign:"left"}}>
               <thead>
-                <tr style={{ background: C.maskCard2, borderBottom: `1px solid ${C.traceBd}`, color: C.copper }}>
-                  <th style={{ padding: "12px 16px", fontWeight: 700, letterSpacing: 1 }}>PART NAME</th>
-                  <th style={{ padding: "12px 16px", fontWeight: 700, letterSpacing: 1 }}>CATEGORY</th>
-                  <th style={{ padding: "12px 16px", fontWeight: 700, letterSpacing: 1 }}>LOCATION</th>
-                  <th style={{ padding: "12px 16px", fontWeight: 700, letterSpacing: 1 }}>STOCK</th>
-                  <th style={{ padding: "12px 16px", fontWeight: 700, letterSpacing: 1 }}>STATUS</th>
-                  <th style={{ padding: "12px 16px", fontWeight: 700, letterSpacing: 1 }}>ACT</th>
+                <tr style={{background:C.maskCard2,borderBottom:`1px solid ${C.traceBd}`,color:C.copper}}>
+                  <th style={{padding:"12px 16px",fontWeight:700,letterSpacing:1}}>PART NAME</th>
+                  <th style={{padding:"12px 16px",fontWeight:700,letterSpacing:1}}>CATEGORY</th>
+                  <th style={{padding:"12px 16px",fontWeight:700,letterSpacing:1}}>LOCATION</th>
+                  <th style={{padding:"12px 16px",fontWeight:700,letterSpacing:1}}>STOCK</th>
+                  <th style={{padding:"12px 16px",fontWeight:700,letterSpacing:1}}>STATUS</th>
+                  <th style={{padding:"12px 16px",fontWeight:700,letterSpacing:1}}>ACT</th>
                 </tr>
               </thead>
               <tbody>
-                {parts.map(p => (
-                  <tr key={p.id} style={{ borderBottom: `1px solid ${C.traceBd}`, color: C.silk }}>
-                    <td style={{ padding: "12px 16px", fontWeight: 700 }}>{p.name}<div style={{ fontSize: 9, color: C.silkDim, marginTop: 4 }}>{p.notes}</div></td>
-                    <td style={{ padding: "12px 16px" }}>{p.category}</td>
-                    <td style={{ padding: "12px 16px", color: C.copperBright }}>{p.loc}</td>
-                    <td style={{ padding: "12px 16px" }}>
-                      <QtyControl value={p.qty} onChange={(val) => setParts(parts.map(x => x.id === p.id ? { ...x, qty: val, status: val === 0 ? "Out of Stock" : val <= x.min ? "Low Stock" : "Available" } : x))} />
+                {parts.map(p=>(
+                  <tr key={p.id} style={{borderBottom:`1px solid ${C.traceBd}`,color:C.silk}}>
+                    <td style={{padding:"12px 16px",fontWeight:700}}>{p.name}<div style={{fontSize:9,color:C.silkDim,marginTop:4}}>{p.notes}</div></td>
+                    <td style={{padding:"12px 16px"}}>{p.category}</td>
+                    <td style={{padding:"12px 16px",color:C.copperBright}}>{p.loc}</td>
+                    <td style={{padding:"12px 16px"}}>
+                      <QtyControl value={p.qty} onChange={val=>setParts(parts.map(x=>x.id===p.id?{...x,qty:val,status:val===0?"Out of Stock":val<=x.min?"Low Stock":"Available"}:x))} />
                     </td>
-                    <td style={{ padding: "12px 16px" }}><Badge text={p.status} color={statusClr(p.status)} sm /></td>
-                    <td style={{ padding: "12px 16px" }}><IconBtn icon="✎" onClick={() => setEditPart(p)} color={C.ledBlue} /></td>
+                    <td style={{padding:"12px 16px"}}><Badge text={p.status} color={statusClr(p.status)} sm /></td>
+                    <td style={{padding:"12px 16px"}}><IconBtn icon="✎" onClick={()=>setEditPart(p)} color={C.ledBlue} /></td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </Card>
-
-          {editPart && (
-            <Modal title={editPart.id ? "EDIT COMPONENT" : "ADD COMPONENT"} onClose={() => setEditPart(null)}>
-              <Field label="PART NAME" value={editPart.name} onChange={(v) => setEditPart({...editPart, name:v})} />
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-                <SelField label="CATEGORY" value={editPart.category} onChange={(v) => setEditPart({...editPart, category:v})} options={["Actuators", "Microcontroller", "Drivers", "Power", "Sensors", "Structure", "Misc"]} />
-                <Field label="LOCATION" value={editPart.loc} onChange={(v) => setEditPart({...editPart, loc:v})} />
+          {editPart&&(
+            <Modal title={editPart.id?"EDIT COMPONENT":"ADD COMPONENT"} onClose={()=>setEditPart(null)}>
+              <Field label="PART NAME" value={editPart.name} onChange={v=>setEditPart({...editPart,name:v})} />
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+                <SelField label="CATEGORY" value={editPart.category} onChange={v=>setEditPart({...editPart,category:v})} options={["Actuators","Microcontroller","Drivers","Power","Sensors","Structure","Misc"]} />
+                <Field label="LOCATION" value={editPart.loc} onChange={v=>setEditPart({...editPart,loc:v})} />
               </div>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-                <Field label="QUANTITY" type="number" value={editPart.qty} onChange={(v) => setEditPart({...editPart, qty: parseInt(v) || 0})} />
-                <Field label="MINIMUM THRESHOLD" type="number" value={editPart.min} onChange={(v) => setEditPart({...editPart, min: parseInt(v) || 0})} />
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+                <Field label="QUANTITY" type="number" value={editPart.qty} onChange={v=>setEditPart({...editPart,qty:parseInt(v)||0})} />
+                <Field label="MINIMUM THRESHOLD" type="number" value={editPart.min} onChange={v=>setEditPart({...editPart,min:parseInt(v)||0})} />
               </div>
-              <SegControl label="STATUS" value={editPart.status} onChange={(v) => setEditPart({...editPart, status:v})} options={PART_STATUSES} colors={{Available:C.ledGreen, "Low Stock":C.ledYellow, "Out of Stock":C.ledRed, Ordered:C.ledBlue}} />
-              <Field label="NOTES" value={editPart.notes} onChange={(v) => setEditPart({...editPart, notes:v})} />
+              <SegControl label="STATUS" value={editPart.status} onChange={v=>setEditPart({...editPart,status:v})} options={PART_STATUSES} colors={{Available:C.ledGreen,"Low Stock":C.ledYellow,"Out of Stock":C.ledRed,Ordered:C.ledBlue}} />
+              <Field label="NOTES" value={editPart.notes} onChange={v=>setEditPart({...editPart,notes:v})} />
               <SaveBtn onClick={handleSave} disabled={!editPart.name} />
             </Modal>
           )}
@@ -618,44 +809,38 @@
     const Members = ({ store }) => {
       const { members, setMembers } = store;
       const [editMem, setEditMem] = useState(null);
-
       const handleSave = () => {
         if (!editMem.name) return;
-        if (editMem.id) {
-          setMembers(members.map(m => m.id === editMem.id ? editMem : m));
-        } else {
-          setMembers([...members, { ...editMem, id: uid() }]);
-        }
+        if (editMem.id) { setMembers(members.map(m=>m.id===editMem.id?editMem:m)); }
+        else { setMembers([...members,{...editMem,id:uid()}]); }
         setEditMem(null);
       };
-
       return (
-        <div style={{ padding: 28 }}>
-          <SectionTitle text="Crew Manifest" color={C.copperBright} rightElement={<Btn label="Add Member" sm color={C.copperBright} onClick={() => setEditMem({ name:"", role:"Mission Specialist", subteam:"", active:true })} />} />
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 16 }}>
-            {members.map((m, i) => (
-              <Card key={m.id} style={{ padding: 16, borderLeft: `3px solid ${m.active ? avatarPalette[i % avatarPalette.length] : C.silkDim}` }}>
-                <div style={{ display: "flex", gap: 14, alignItems: "center" }}>
-                  <div style={{ width: 44, height: 44, borderRadius: 6, background: m.active ? avatarPalette[i % avatarPalette.length] + "22" : C.maskCard2, border: `1px solid ${m.active ? avatarPalette[i % avatarPalette.length] : C.silkDim}`, display: "flex", alignItems: "center", justifyContent: "center", color: m.active ? avatarPalette[i % avatarPalette.length] : C.silkDim, fontSize: 18, fontWeight: 900 }}>
+        <div style={{padding:28}}>
+          <SectionTitle text="Crew Manifest" color={C.copperBright} rightElement={<Btn label="Add Member" sm color={C.copperBright} onClick={()=>setEditMem({name:"",role:"Mission Specialist",subteam:"",active:true})} />} />
+          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill, minmax(280px, 1fr))",gap:16}}>
+            {members.map((m,i)=>(
+              <Card key={m.id} style={{padding:16,borderLeft:`3px solid ${m.active?avatarPalette[i%avatarPalette.length]:C.silkDim}`}}>
+                <div style={{display:"flex",gap:14,alignItems:"center"}}>
+                  <div style={{width:44,height:44,borderRadius:6,background:m.active?avatarPalette[i%avatarPalette.length]+"22":C.maskCard2,border:`1px solid ${m.active?avatarPalette[i%avatarPalette.length]:C.silkDim}`,display:"flex",alignItems:"center",justifyContent:"center",color:m.active?avatarPalette[i%avatarPalette.length]:C.silkDim,fontSize:18,fontWeight:900}}>
                     {m.name.charAt(0)}
                   </div>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ color: C.silk, fontWeight: 700, fontSize: 13, marginBottom: 2 }}>{m.name}</div>
-                    <div style={{ color: C.copper, fontSize: 10, marginBottom: 4 }}>{m.role}</div>
+                  <div style={{flex:1}}>
+                    <div style={{color:C.silk,fontWeight:700,fontSize:13,marginBottom:2}}>{m.name}</div>
+                    <div style={{color:C.copper,fontSize:10,marginBottom:4}}>{m.role}</div>
                     <Badge text={m.subteam} color={C.silkDim} sm />
                   </div>
-                  <IconBtn icon="✎" onClick={() => setEditMem(m)} color={C.copperDim} />
+                  <IconBtn icon="✎" onClick={()=>setEditMem(m)} color={C.copperDim} />
                 </div>
               </Card>
             ))}
           </div>
-
-          {editMem && (
-            <Modal title={editMem.id ? "EDIT MEMBER" : "ADD MEMBER"} onClose={() => setEditMem(null)}>
-              <Field label="NAME" value={editMem.name} onChange={(v) => setEditMem({...editMem, name:v})} />
-              <SelField label="ROLE" value={editMem.role} onChange={(v) => setEditMem({...editMem, role:v})} options={MEMBER_ROLES} />
-              <Field label="SUBTEAM / POSITION" value={editMem.subteam} onChange={(v) => setEditMem({...editMem, subteam:v})} />
-              <SegControl label="STATUS" value={editMem.active ? "Active" : "Inactive"} onChange={(v) => setEditMem({...editMem, active: v === "Active"})} options={["Active", "Inactive"]} colors={{Active:C.ledGreen, Inactive:C.silkDim}} />
+          {editMem&&(
+            <Modal title={editMem.id?"EDIT MEMBER":"ADD MEMBER"} onClose={()=>setEditMem(null)}>
+              <Field label="NAME" value={editMem.name} onChange={v=>setEditMem({...editMem,name:v})} />
+              <SelField label="ROLE" value={editMem.role} onChange={v=>setEditMem({...editMem,role:v})} options={MEMBER_ROLES} />
+              <Field label="SUBTEAM / POSITION" value={editMem.subteam} onChange={v=>setEditMem({...editMem,subteam:v})} />
+              <SegControl label="STATUS" value={editMem.active?"Active":"Inactive"} onChange={v=>setEditMem({...editMem,active:v==="Active"})} options={["Active","Inactive"]} colors={{Active:C.ledGreen,Inactive:C.silkDim}} />
               <SaveBtn onClick={handleSave} disabled={!editMem.name} />
             </Modal>
           )}
@@ -666,38 +851,32 @@
     const Tasks = ({ store }) => {
       const { tasks, setTasks, members } = store;
       const [editTask, setEditTask] = useState(null);
-
       const handleSave = () => {
         if (!editTask.title) return;
-        if (editTask.id) {
-          setTasks(tasks.map(t => t.id === editTask.id ? editTask : t));
-        } else {
-          setTasks([...tasks, { ...editTask, id: uid() }]);
-        }
+        if (editTask.id) { setTasks(tasks.map(t=>t.id===editTask.id?editTask:t)); }
+        else { setTasks([...tasks,{...editTask,id:uid()}]); }
         setEditTask(null);
       };
-
       return (
-        <div style={{ padding: 28, height: "100%", display: "flex", flexDirection: "column" }}>
-          <SectionTitle text="Mission Operations" color={C.ledYellow} rightElement={<Btn label="New Task" sm color={C.ledYellow} onClick={() => setEditTask({ title:"", desc:"", assignee:members[0]?.name||"", due:NOW+DAY, priority:"Medium", status:"To Do", cat:"Hardware" })} />} />
-          
-          <div style={{ display: "flex", gap: 16, flex: 1, minHeight: 0, overflowX: "auto" }}>
-            {TASK_STATUSES.map(status => (
-              <div key={status} style={{ flex: "1", minWidth: 260, background: C.maskCard2, borderRadius: 6, border: `1px solid ${C.traceBd}`, display: "flex", flexDirection: "column" }}>
-                <div style={{ padding: "12px 16px", borderBottom: `1px solid ${C.traceBd}`, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                  <span style={{ color: colClr(status), fontWeight: 900, fontSize: 11, letterSpacing: 1, textTransform: "uppercase" }}>{status}</span>
-                  <span style={{ background: C.maskDark, padding: "2px 6px", borderRadius: 4, fontSize: 9, color: C.silkDim }}>{tasks.filter(t => t.status === status).length}</span>
+        <div style={{padding:28,height:"100%",display:"flex",flexDirection:"column"}}>
+          <SectionTitle text="Mission Operations" color={C.ledYellow} rightElement={<Btn label="New Task" sm color={C.ledYellow} onClick={()=>setEditTask({title:"",desc:"",assignee:members[0]?.name||"",due:NOW+DAY,priority:"Medium",status:"To Do",cat:"Hardware"})} />} />
+          <div style={{display:"flex",gap:16,flex:1,minHeight:0,overflowX:"auto"}}>
+            {TASK_STATUSES.map(status=>(
+              <div key={status} style={{flex:"1",minWidth:260,background:C.maskCard2,borderRadius:6,border:`1px solid ${C.traceBd}`,display:"flex",flexDirection:"column"}}>
+                <div style={{padding:"12px 16px",borderBottom:`1px solid ${C.traceBd}`,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                  <span style={{color:colClr(status),fontWeight:900,fontSize:11,letterSpacing:1,textTransform:"uppercase"}}>{status}</span>
+                  <span style={{background:C.maskDark,padding:"2px 6px",borderRadius:4,fontSize:9,color:C.silkDim}}>{tasks.filter(t=>t.status===status).length}</span>
                 </div>
-                <div style={{ padding: 12, overflowY: "auto", flex: 1, display: "flex", flexDirection: "column", gap: 10 }}>
-                  {tasks.filter(t => t.status === status).map(t => (
-                    <Card key={t.id} style={{ padding: 12, cursor: "pointer", borderLeft: `2px solid ${prioClr(t.priority)}` }}>
-                      <div onClick={() => setEditTask(t)}>
-                        <div style={{ fontSize: 9, color: C.copper, marginBottom: 4, textTransform: "uppercase" }}>{t.cat}</div>
-                        <div style={{ color: C.silk, fontWeight: 700, fontSize: 12, marginBottom: 6 }}>{t.title}</div>
-                        <div style={{ color: C.silkDim, fontSize: 10, marginBottom: 10 }}>{t.desc}</div>
-                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                          <span style={{ color: C.silk, fontSize: 10, background: C.maskDark, padding: "2px 6px", borderRadius: 3 }}>{t.assignee}</span>
-                          <span style={{ color: t.due < NOW && t.status !== "Done" ? C.ledRed : C.silkDim, fontSize: 9 }}>{fdate(t.due)}</span>
+                <div style={{padding:12,overflowY:"auto",flex:1,display:"flex",flexDirection:"column",gap:10}}>
+                  {tasks.filter(t=>t.status===status).map(t=>(
+                    <Card key={t.id} style={{padding:12,cursor:"pointer",borderLeft:`2px solid ${prioClr(t.priority)}`}}>
+                      <div onClick={()=>setEditTask(t)}>
+                        <div style={{fontSize:9,color:C.copper,marginBottom:4,textTransform:"uppercase"}}>{t.cat}</div>
+                        <div style={{color:C.silk,fontWeight:700,fontSize:12,marginBottom:6}}>{t.title}</div>
+                        <div style={{color:C.silkDim,fontSize:10,marginBottom:10}}>{t.desc}</div>
+                        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                          <span style={{color:C.silk,fontSize:10,background:C.maskDark,padding:"2px 6px",borderRadius:3}}>{t.assignee}</span>
+                          <span style={{color:t.due<NOW&&t.status!=="Done"?C.ledRed:C.silkDim,fontSize:9}}>{fdate(t.due)}</span>
                         </div>
                       </div>
                     </Card>
@@ -706,20 +885,19 @@
               </div>
             ))}
           </div>
-
-          {editTask && (
-            <Modal title={editTask.id ? "EDIT TASK" : "NEW TASK"} onClose={() => setEditTask(null)}>
-              <Field label="TITLE" value={editTask.title} onChange={(v) => setEditTask({...editTask, title:v})} />
-              <Field label="DESCRIPTION" value={editTask.desc} onChange={(v) => setEditTask({...editTask, desc:v})} />
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-                <SelField label="ASSIGNEE" value={editTask.assignee} onChange={(v) => setEditTask({...editTask, assignee:v})} options={members.map(m=>m.name)} />
-                <SelField label="CATEGORY" value={editTask.cat} onChange={(v) => setEditTask({...editTask, cat:v})} options={["Hardware", "Software", "Inventory", "Business", "Design", "Other"]} />
+          {editTask&&(
+            <Modal title={editTask.id?"EDIT TASK":"NEW TASK"} onClose={()=>setEditTask(null)}>
+              <Field label="TITLE" value={editTask.title} onChange={v=>setEditTask({...editTask,title:v})} />
+              <Field label="DESCRIPTION" value={editTask.desc} onChange={v=>setEditTask({...editTask,desc:v})} />
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+                <SelField label="ASSIGNEE" value={editTask.assignee} onChange={v=>setEditTask({...editTask,assignee:v})} options={members.map(m=>m.name)} />
+                <SelField label="CATEGORY" value={editTask.cat} onChange={v=>setEditTask({...editTask,cat:v})} options={["Hardware","Software","Inventory","Business","Design","Other"]} />
               </div>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-                <Field label="DUE DATE" type="date" value={finput(editTask.due)} onChange={(v) => setEditTask({...editTask, due: new Date(v).getTime()})} />
-                <SelField label="PRIORITY" value={editTask.priority} onChange={(v) => setEditTask({...editTask, priority:v})} options={TASK_PRIORITIES} />
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+                <Field label="DUE DATE" type="date" value={finput(editTask.due)} onChange={v=>setEditTask({...editTask,due:new Date(v).getTime()})} />
+                <SelField label="PRIORITY" value={editTask.priority} onChange={v=>setEditTask({...editTask,priority:v})} options={TASK_PRIORITIES} />
               </div>
-              <SegControl label="STATUS" value={editTask.status} onChange={(v) => setEditTask({...editTask, status:v})} options={TASK_STATUSES} colors={{ "To Do":C.silkDim,"In Progress":C.ledYellow,Review:C.ledBlue,Done:C.ledGreen }} />
+              <SegControl label="STATUS" value={editTask.status} onChange={v=>setEditTask({...editTask,status:v})} options={TASK_STATUSES} colors={{"To Do":C.silkDim,"In Progress":C.ledYellow,Review:C.ledBlue,Done:C.ledGreen}} />
               <SaveBtn onClick={handleSave} disabled={!editTask.title} />
             </Modal>
           )}
@@ -730,78 +908,69 @@
     const Budget = ({ store }) => {
       const { budget, setBudget } = store;
       const [editTrx, setEditTrx] = useState(null);
-
-      const income = budget.filter(b => b.type === "Income").reduce((s, b) => s + b.amount, 0);
-      const expense = budget.filter(b => b.type === "Expense").reduce((s, b) => s + b.amount, 0);
-      const balance = income - expense;
-
+      const income  = budget.filter(b=>b.type==="Income").reduce((s,b)=>s+b.amount,0);
+      const expense = budget.filter(b=>b.type==="Expense").reduce((s,b)=>s+b.amount,0);
+      const balance = income-expense;
       const handleSave = () => {
-        if (!editTrx.title || !editTrx.amount) return;
-        if (editTrx.id) {
-          setBudget(budget.map(b => b.id === editTrx.id ? editTrx : b));
-        } else {
-          setBudget([...budget, { ...editTrx, id: uid() }]);
-        }
+        if (!editTrx.title||!editTrx.amount) return;
+        if (editTrx.id) { setBudget(budget.map(b=>b.id===editTrx.id?editTrx:b)); }
+        else { setBudget([...budget,{...editTrx,id:uid()}]); }
         setEditTrx(null);
       };
-
       return (
-        <div style={{ padding: 28 }}>
-          <SectionTitle text="Financial Log" color={C.ledGreen} rightElement={<Btn label="Log Transaction" sm color={C.ledGreen} onClick={() => setEditTrx({ title:"", amount:0, cat:"Misc", type:"Expense", date:NOW, notes:"" })} />} />
-          
-          <div style={{ display: "flex", gap: 16, marginBottom: 20 }}>
-            <Card style={{ flex: 1, padding: 16, textAlign: "center" }} glowColor={C.ledBlue}>
-              <div style={{ color: C.silkDim, fontSize: 10, letterSpacing: 1, marginBottom: 4 }}>TOTAL FUNDING</div>
-              <div style={{ color: C.ledBlue, fontSize: 24, fontWeight: 900 }}>₱{money(income)}</div>
+        <div style={{padding:28}}>
+          <SectionTitle text="Financial Log" color={C.ledGreen} rightElement={<Btn label="Log Transaction" sm color={C.ledGreen} onClick={()=>setEditTrx({title:"",amount:0,cat:"Misc",type:"Expense",date:NOW,notes:""})} />} />
+          <div style={{display:"flex",gap:16,marginBottom:20}}>
+            <Card style={{flex:1,padding:16,textAlign:"center"}} glowColor={C.ledBlue}>
+              <div style={{color:C.silkDim,fontSize:10,letterSpacing:1,marginBottom:4}}>TOTAL FUNDING</div>
+              <div style={{color:C.ledBlue,fontSize:24,fontWeight:900}}>₱{money(income)}</div>
             </Card>
-            <Card style={{ flex: 1, padding: 16, textAlign: "center" }} glowColor={C.ledRed}>
-              <div style={{ color: C.silkDim, fontSize: 10, letterSpacing: 1, marginBottom: 4 }}>TOTAL EXPENSES</div>
-              <div style={{ color: C.ledRed, fontSize: 24, fontWeight: 900 }}>₱{money(expense)}</div>
+            <Card style={{flex:1,padding:16,textAlign:"center"}} glowColor={C.ledRed}>
+              <div style={{color:C.silkDim,fontSize:10,letterSpacing:1,marginBottom:4}}>TOTAL EXPENSES</div>
+              <div style={{color:C.ledRed,fontSize:24,fontWeight:900}}>₱{money(expense)}</div>
             </Card>
-            <Card style={{ flex: 1, padding: 16, textAlign: "center" }} glowColor={balance >= 0 ? C.ledGreen : C.ledRed}>
-              <div style={{ color: C.silkDim, fontSize: 10, letterSpacing: 1, marginBottom: 4 }}>CURRENT BALANCE</div>
-              <div style={{ color: balance >= 0 ? C.ledGreen : C.ledRed, fontSize: 24, fontWeight: 900 }}>₱{money(balance)}</div>
+            <Card style={{flex:1,padding:16,textAlign:"center"}} glowColor={balance>=0?C.ledGreen:C.ledRed}>
+              <div style={{color:C.silkDim,fontSize:10,letterSpacing:1,marginBottom:4}}>CURRENT BALANCE</div>
+              <div style={{color:balance>=0?C.ledGreen:C.ledRed,fontSize:24,fontWeight:900}}>₱{money(balance)}</div>
             </Card>
           </div>
-
           <Card>
-            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 11, textAlign: "left" }}>
+            <table style={{width:"100%",borderCollapse:"collapse",fontSize:11,textAlign:"left"}}>
               <thead>
-                <tr style={{ background: C.maskCard2, borderBottom: `1px solid ${C.traceBd}`, color: C.copper }}>
-                  <th style={{ padding: "12px 16px" }}>DATE</th>
-                  <th style={{ padding: "12px 16px" }}>DESCRIPTION</th>
-                  <th style={{ padding: "12px 16px" }}>CATEGORY</th>
-                  <th style={{ padding: "12px 16px", textAlign: "right" }}>AMOUNT</th>
-                  <th style={{ padding: "12px 16px", width: 40 }}>ACT</th>
+                <tr style={{background:C.maskCard2,borderBottom:`1px solid ${C.traceBd}`,color:C.copper}}>
+                  <th style={{padding:"12px 16px"}}>DATE</th>
+                  <th style={{padding:"12px 16px"}}>DESCRIPTION</th>
+                  <th style={{padding:"12px 16px"}}>CATEGORY</th>
+                  <th style={{padding:"12px 16px",textAlign:"right"}}>AMOUNT</th>
+                  <th style={{padding:"12px 16px",width:40}}>ACT</th>
                 </tr>
               </thead>
               <tbody>
-                {budget.sort((a,b) => b.date - a.date).map(b => (
-                  <tr key={b.id} style={{ borderBottom: `1px solid ${C.traceBd}` }}>
-                    <td style={{ padding: "12px 16px", color: C.silkDim }}>{fdate(b.date)}</td>
-                    <td style={{ padding: "12px 16px", color: C.silk, fontWeight: 700 }}>{b.title}<div style={{fontSize:9, color:C.silkDim, marginTop:4}}>{b.notes}</div></td>
-                    <td style={{ padding: "12px 16px" }}><Badge text={b.cat} color={C.silkDim} sm /></td>
-                    <td style={{ padding: "12px 16px", textAlign: "right", color: b.type === "Income" ? C.ledGreen : C.ledRed, fontWeight: 900 }}>
-                      {b.type === "Income" ? "+" : "-"}₱{money(b.amount)}
+                {budget.sort((a,b)=>b.date-a.date).map(b=>(
+                  <tr key={b.id} style={{borderBottom:`1px solid ${C.traceBd}`}}>
+                    <td style={{padding:"12px 16px",color:C.silkDim}}>{fdate(b.date)}</td>
+                    <td style={{padding:"12px 16px",color:C.silk,fontWeight:700}}>{b.title}<div style={{fontSize:9,color:C.silkDim,marginTop:4}}>{b.notes}</div></td>
+                    <td style={{padding:"12px 16px"}}><Badge text={b.cat} color={C.silkDim} sm /></td>
+                    <td style={{padding:"12px 16px",textAlign:"right",color:b.type==="Income"?C.ledGreen:C.ledRed,fontWeight:900}}>
+                      {b.type==="Income"?"+":"-"}₱{money(b.amount)}
                     </td>
-                    <td style={{ padding: "12px 16px" }}><IconBtn icon="✎" onClick={() => setEditTrx(b)} color={C.copper} /></td>
+                    <td style={{padding:"12px 16px"}}><IconBtn icon="✎" onClick={()=>setEditTrx(b)} color={C.copper} /></td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </Card>
-
-          {editTrx && (
-            <Modal title={editTrx.id ? "EDIT TRANSACTION" : "LOG TRANSACTION"} onClose={() => setEditTrx(null)}>
-              <SegControl label="TYPE" value={editTrx.type} onChange={(v) => setEditTrx({...editTrx, type:v})} options={["Income", "Expense"]} colors={{Income:C.ledGreen, Expense:C.ledRed}} />
-              <Field label="DESCRIPTION" value={editTrx.title} onChange={(v) => setEditTrx({...editTrx, title:v})} />
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-                <Field label="AMOUNT (₱)" type="number" value={editTrx.amount} onChange={(v) => setEditTrx({...editTrx, amount: parseFloat(v) || 0})} />
-                <Field label="DATE" type="date" value={finput(editTrx.date)} onChange={(v) => setEditTrx({...editTrx, date: new Date(v).getTime()})} />
+          {editTrx&&(
+            <Modal title={editTrx.id?"EDIT TRANSACTION":"LOG TRANSACTION"} onClose={()=>setEditTrx(null)}>
+              <SegControl label="TYPE" value={editTrx.type} onChange={v=>setEditTrx({...editTrx,type:v})} options={["Income","Expense"]} colors={{Income:C.ledGreen,Expense:C.ledRed}} />
+              <Field label="DESCRIPTION" value={editTrx.title} onChange={v=>setEditTrx({...editTrx,title:v})} />
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+                <Field label="AMOUNT (₱)" type="number" value={editTrx.amount} onChange={v=>setEditTrx({...editTrx,amount:parseFloat(v)||0})} />
+                <Field label="DATE" type="date" value={finput(editTrx.date)} onChange={v=>setEditTrx({...editTrx,date:new Date(v).getTime()})} />
               </div>
-              <SelField label="CATEGORY" value={editTrx.cat} onChange={(v) => setEditTrx({...editTrx, cat:v})} options={["Components", "Fabrication", "Competition", "Tools", "Grant", "Sponsorship", "Misc"]} />
-              <Field label="NOTES" value={editTrx.notes} onChange={(v) => setEditTrx({...editTrx, notes:v})} />
-              <SaveBtn onClick={handleSave} disabled={!editTrx.title || !editTrx.amount} />
+              <SelField label="CATEGORY" value={editTrx.cat} onChange={v=>setEditTrx({...editTrx,cat:v})} options={["Components","Fabrication","Competition","Tools","Grant","Sponsorship","Misc"]} />
+              <Field label="NOTES" value={editTrx.notes} onChange={v=>setEditTrx({...editTrx,notes:v})} />
+              <SaveBtn onClick={handleSave} disabled={!editTrx.title||!editTrx.amount} />
             </Modal>
           )}
         </div>
@@ -811,38 +980,33 @@
     const Competitions = ({ store }) => {
       const { comps, setComps } = store;
       const [editComp, setEditComp] = useState(null);
-
       const handleSave = () => {
         if (!editComp.name) return;
-        if (editComp.id) {
-          setComps(comps.map(c => c.id === editComp.id ? editComp : c));
-        } else {
-          setComps([...comps, { ...editComp, id: uid() }]);
-        }
+        if (editComp.id) { setComps(comps.map(c=>c.id===editComp.id?editComp:c)); }
+        else { setComps([...comps,{...editComp,id:uid()}]); }
         setEditComp(null);
       };
-
       return (
-        <div style={{ padding: 28 }}>
-          <SectionTitle text="Event Log" color={C.solder} rightElement={<Btn label="Add Event" sm color={C.solder} onClick={() => setEditComp({ name:"", loc:"", date:NOW, ranking:null, score:null, notes:"", status:"Upcoming" })} />} />
-          <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-            {comps.sort((a,b) => b.date - a.date).map(c => (
-              <Card key={c.id} style={{ padding: 20 }} glowColor={compClr(c.status)}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+        <div style={{padding:28}}>
+          <SectionTitle text="Event Log" color={C.solder} rightElement={<Btn label="Add Event" sm color={C.solder} onClick={()=>setEditComp({name:"",loc:"",date:NOW,ranking:null,score:null,notes:"",status:"Upcoming"})} />} />
+          <div style={{display:"flex",flexDirection:"column",gap:16}}>
+            {comps.sort((a,b)=>b.date-a.date).map(c=>(
+              <Card key={c.id} style={{padding:20}} glowColor={compClr(c.status)}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
                   <div>
-                    <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
-                      <span style={{ fontSize: 18, color: C.silk, fontWeight: 900 }}>{c.name}</span>
+                    <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:8}}>
+                      <span style={{fontSize:18,color:C.silk,fontWeight:900}}>{c.name}</span>
                       <Badge text={c.status} color={compClr(c.status)} sm />
                     </div>
-                    <div style={{ color: C.silkDim, fontSize: 11, marginBottom: 4 }}>📍 {c.loc} • 📅 {fdate(c.date)}</div>
-                    <div style={{ color: C.copper, fontSize: 10 }}>{c.notes}</div>
+                    <div style={{color:C.silkDim,fontSize:11,marginBottom:4}}>📍 {c.loc} • 📅 {fdate(c.date)}</div>
+                    <div style={{color:C.copper,fontSize:10}}>{c.notes}</div>
                   </div>
-                  <div style={{ textAlign: "right" }}>
-                    <IconBtn icon="✎" onClick={() => setEditComp(c)} color={C.solderDim} />
-                    {c.ranking && (
-                      <div style={{ marginTop: 10, background: C.maskDark, padding: "8px 12px", borderRadius: 4, border: `1px solid ${C.traceBd}`, textAlign: "center" }}>
-                        <div style={{ color: C.silkDim, fontSize: 8, letterSpacing: 1 }}>RANKING</div>
-                        <div style={{ color: C.copperBright, fontSize: 20, fontWeight: 900 }}>#{c.ranking}</div>
+                  <div style={{textAlign:"right"}}>
+                    <IconBtn icon="✎" onClick={()=>setEditComp(c)} color={C.solderDim} />
+                    {c.ranking&&(
+                      <div style={{marginTop:10,background:C.maskDark,padding:"8px 12px",borderRadius:4,border:`1px solid ${C.traceBd}`,textAlign:"center"}}>
+                        <div style={{color:C.silkDim,fontSize:8,letterSpacing:1}}>RANKING</div>
+                        <div style={{color:C.copperBright,fontSize:20,fontWeight:900}}>#{c.ranking}</div>
                       </div>
                     )}
                   </div>
@@ -850,21 +1014,116 @@
               </Card>
             ))}
           </div>
-
-          {editComp && (
-            <Modal title={editComp.id ? "EDIT EVENT" : "ADD EVENT"} onClose={() => setEditComp(null)}>
-              <Field label="EVENT NAME" value={editComp.name} onChange={(v) => setEditComp({...editComp, name:v})} />
-              <Field label="LOCATION" value={editComp.loc} onChange={(v) => setEditComp({...editComp, loc:v})} />
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-                <Field label="DATE" type="date" value={finput(editComp.date)} onChange={(v) => setEditComp({...editComp, date: new Date(v).getTime()})} />
-                <SegControl label="STATUS" value={editComp.status} onChange={(v) => setEditComp({...editComp, status:v})} options={COMP_STATUSES} colors={{Upcoming:C.ledYellow, Ongoing:C.ledGreen, Completed:C.solder}} />
+          {editComp&&(
+            <Modal title={editComp.id?"EDIT EVENT":"ADD EVENT"} onClose={()=>setEditComp(null)}>
+              <Field label="EVENT NAME" value={editComp.name} onChange={v=>setEditComp({...editComp,name:v})} />
+              <Field label="LOCATION" value={editComp.loc} onChange={v=>setEditComp({...editComp,loc:v})} />
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+                <Field label="DATE" type="date" value={finput(editComp.date)} onChange={v=>setEditComp({...editComp,date:new Date(v).getTime()})} />
+                <SegControl label="STATUS" value={editComp.status} onChange={v=>setEditComp({...editComp,status:v})} options={COMP_STATUSES} colors={{Upcoming:C.ledYellow,Ongoing:C.ledGreen,Completed:C.solder}} />
               </div>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-                <Field label="RANKING (If completed)" type="number" value={editComp.ranking || ""} onChange={(v) => setEditComp({...editComp, ranking: parseInt(v) || null})} />
-                <Field label="SCORE (If completed)" type="number" value={editComp.score || ""} onChange={(v) => setEditComp({...editComp, score: parseInt(v) || null})} />
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+                <Field label="RANKING (optional)" type="number" value={editComp.ranking||""} onChange={v=>setEditComp({...editComp,ranking:parseInt(v)||null})} />
+                <Field label="SCORE (optional)"   type="number" value={editComp.score||""}   onChange={v=>setEditComp({...editComp,score:parseInt(v)||null})} />
               </div>
-              <Field label="NOTES" value={editComp.notes} onChange={(v) => setEditComp({...editComp, notes:v})} />
+              <Field label="NOTES" value={editComp.notes} onChange={v=>setEditComp({...editComp,notes:v})} />
               <SaveBtn onClick={handleSave} disabled={!editComp.name} />
+            </Modal>
+          )}
+        </div>
+      );
+    };
+
+    /* ============================================================
+       BLOG — ANNOUNCEMENTS
+    ============================================================ */
+    const Blog = ({ store }) => {
+      const { blogs, setBlogs } = store;
+      const [editPost, setEditPost] = useState(null);
+      const [filterTag, setFilterTag] = useState("All");
+
+      const handleSave = () => {
+        if (!editPost.title||!editPost.body) return;
+        if (editPost.id) {
+          setBlogs(blogs.map(b=>b.id===editPost.id?{...editPost,updatedAt:Date.now()}:b));
+        } else {
+          setBlogs([{...editPost,id:uid(),createdAt:Date.now(),updatedAt:Date.now()},...blogs]);
+        }
+        setEditPost(null);
+      };
+
+      const handleDelete = (id) => {
+        if (!confirm("Delete this post?")) return;
+        setBlogs(blogs.filter(b=>b.id!==id));
+      };
+
+      const filtered = filterTag==="All" ? blogs : blogs.filter(b=>b.tag===filterTag);
+      const sorted   = [...filtered].sort((a,b)=>b.createdAt-a.createdAt);
+
+      return (
+        <div style={{padding:28}}>
+          <SectionTitle
+            text="Announcements & Blog"
+            color={C.ledGreen}
+            rightElement={<Btn label="New Post" sm color={C.ledGreen} icon="✎" onClick={()=>setEditPost({title:"",body:"",tag:"Announcement",author:""})} />}
+          />
+
+          {/* Tag filter */}
+          <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:20}}>
+            {["All",...BLOG_TAGS].map(tag=>{
+              const sel=filterTag===tag;
+              const clr=tag==="All"?C.silk:tagClr(tag);
+              return (
+                <div key={tag} onClick={()=>setFilterTag(tag)} style={{
+                  padding:"4px 12px",borderRadius:3,cursor:"pointer",
+                  background:sel?clr+"22":"transparent",
+                  border:`1px solid ${sel?clr:C.traceBd}`,
+                  color:sel?clr:C.silkDim,
+                  fontFamily:FONT_MONO,fontWeight:700,fontSize:9,letterSpacing:0.8,
+                  transition:"all 0.15s",boxShadow:sel?traceG(clr):"none",
+                }}>{tag.toUpperCase()}</div>
+              );
+            })}
+          </div>
+
+          {sorted.length===0?(
+            <Card style={{padding:48,textAlign:"center"}}>
+              <div style={{color:C.silkDim,fontFamily:FONT_MONO,fontSize:13,letterSpacing:2}}>NO TRANSMISSIONS</div>
+              <div style={{color:C.copper+"66",fontFamily:FONT_MONO,fontSize:9,marginTop:8,letterSpacing:1}}>Click "New Post" to broadcast an announcement</div>
+            </Card>
+          ):(
+            <div style={{display:"flex",flexDirection:"column",gap:14}}>
+              {sorted.map(post=>(
+                <Card key={post.id} style={{padding:20}} glowColor={tagClr(post.tag)}>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:10}}>
+                    <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
+                      <Badge text={post.tag} color={tagClr(post.tag)} sm />
+                      <span style={{color:C.silk,fontFamily:FONT_MONO,fontWeight:900,fontSize:14}}>{post.title}</span>
+                    </div>
+                    <div style={{display:"flex",gap:6,flexShrink:0,marginLeft:12}}>
+                      <IconBtn icon="✎" onClick={()=>setEditPost(post)} color={C.copper} title="Edit" />
+                      <IconBtn icon="✕" onClick={()=>handleDelete(post.id)} color={C.ledRed} title="Delete" />
+                    </div>
+                  </div>
+                  <div style={{color:C.silkDim,fontFamily:FONT_MONO,fontSize:9,marginBottom:12}}>
+                    {post.author?"by "+post.author+" • ":""}{fdate(post.createdAt)}
+                    {post.updatedAt!==post.createdAt?<span style={{color:C.copper+"77"}}> (edited)</span>:""}
+                  </div>
+                  <div style={{color:C.silk,fontFamily:FONT_MONO,fontSize:11,lineHeight:1.7,whiteSpace:"pre-wrap",borderTop:`1px solid ${C.traceBd}`,paddingTop:12}}>
+                    {post.body}
+                  </div>
+                </Card>
+              ))}
+            </div>
+          )}
+
+          {editPost&&(
+            <Modal title={editPost.id?"EDIT POST":"NEW POST"} onClose={()=>setEditPost(null)}>
+              <Field label="TITLE" value={editPost.title} onChange={v=>setEditPost({...editPost,title:v})} />
+              <Field label="AUTHOR (optional)" value={editPost.author||""} onChange={v=>setEditPost({...editPost,author:v})} />
+              <SelField label="TAG" value={editPost.tag} onChange={v=>setEditPost({...editPost,tag:v})} options={BLOG_TAGS} />
+              <TextArea label="BODY" value={editPost.body} onChange={v=>setEditPost({...editPost,body:v})} rows={6} />
+              <SaveBtn onClick={handleSave} disabled={!editPost.title||!editPost.body} />
             </Modal>
           )}
         </div>
@@ -875,29 +1134,31 @@
        APP CONTAINER
     ============================================================ */
     const App = () => {
-      const [active, setActive] = useLocalStorage("as_active_tab", "dashboard");
-      const [parts, setParts] = useLocalStorage("as_parts", defaultParts);
-      const [members, setMembers] = useLocalStorage("as_members", defaultMembers);
-      const [tasks, setTasks] = useLocalStorage("as_tasks", defaultTasks);
-      const [comps, setComps] = useLocalStorage("as_comps", defaultComps);
-      const [budget, setBudget] = useLocalStorage("as_budget", defaultBudget);
+      const [active, setActive] = useState("dashboard");
 
-      const store = { parts, setParts, members, setMembers, tasks, setTasks, comps, setComps, budget, setBudget };
+      const [parts,   setParts]   = useCloudSync("parts",   defaultParts);
+      const [members, setMembers] = useCloudSync("members", defaultMembers);
+      const [tasks,   setTasks]   = useCloudSync("tasks",   defaultTasks);
+      const [comps,   setComps]   = useCloudSync("comps",   defaultComps);
+      const [budget,  setBudget]  = useCloudSync("budget",  defaultBudget);
+      const [blogs,   setBlogs]   = useCloudSync("blogs",   defaultBlogs);
 
-      const lowStockCount = parts.filter(p => p.status === "Low Stock" || p.status === "Out of Stock").length;
+      const store = { parts,setParts, members,setMembers, tasks,setTasks, comps,setComps, budget,setBudget, blogs,setBlogs };
+      const lowStockCount = parts.filter(p=>p.status==="Low Stock"||p.status==="Out of Stock").length;
 
       return (
-        <div style={{ display: "flex", minHeight: "100vh", position: "relative" }}>
+        <div style={{display:"flex",minHeight:"100vh",position:"relative"}}>
           <PCBBackground />
-          <div style={{ position: "relative", zIndex: 1, display: "flex", width: "100%" }}>
+          <div style={{position:"relative",zIndex:1,display:"flex",width:"100%"}}>
             <Sidebar active={active} setActive={setActive} alertCount={lowStockCount} />
-            <main style={{ flex: 1, height: "100vh", overflowY: "auto", position: "relative" }}>
-              {active === "dashboard" && <Dashboard store={store} setActive={setActive} />}
-              {active === "inventory" && <Inventory store={store} />}
-              {active === "members" && <Members store={store} />}
-              {active === "tasks" && <Tasks store={store} />}
-              {active === "competitions" && <Competitions store={store} />}
-              {active === "budget" && <Budget store={store} />}
+            <main style={{flex:1,height:"100vh",overflowY:"auto",position:"relative"}}>
+              {active==="dashboard"    && <Dashboard    store={store} setActive={setActive} />}
+              {active==="inventory"    && <Inventory    store={store} />}
+              {active==="members"      && <Members      store={store} />}
+              {active==="tasks"        && <Tasks        store={store} />}
+              {active==="competitions" && <Competitions store={store} />}
+              {active==="budget"       && <Budget       store={store} />}
+              {active==="blog"         && <Blog         store={store} />}
             </main>
           </div>
         </div>
