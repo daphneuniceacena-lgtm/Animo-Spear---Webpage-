@@ -34,7 +34,32 @@
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
   <script type="text/babel">
-    const { useState, useMemo } = React;
+    const { useState, useEffect, useMemo } = React;
+
+    /* ============================================================
+       LOCAL STORAGE HOOK
+    ============================================================ */
+    function useLocalStorage(key, initialValue) {
+      const [storedValue, setStoredValue] = useState(() => {
+        try {
+          const item = window.localStorage.getItem(key);
+          return item ? JSON.parse(item) : initialValue;
+        } catch (error) {
+          console.error("Error reading localStorage", error);
+          return initialValue;
+        }
+      });
+
+      useEffect(() => {
+        try {
+          window.localStorage.setItem(key, JSON.stringify(storedValue));
+        } catch (error) {
+          console.error("Error setting localStorage", error);
+        }
+      }, [key, storedValue]);
+
+      return [storedValue, setStoredValue];
+    }
 
     /* ============================================================
        PCB THEME — ANIMO SPEAR
@@ -850,12 +875,12 @@
        APP CONTAINER
     ============================================================ */
     const App = () => {
-      const [active, setActive] = useState("dashboard");
-      const [parts, setParts] = useState(defaultParts);
-      const [members, setMembers] = useState(defaultMembers);
-      const [tasks, setTasks] = useState(defaultTasks);
-      const [comps, setComps] = useState(defaultComps);
-      const [budget, setBudget] = useState(defaultBudget);
+      const [active, setActive] = useLocalStorage("as_active_tab", "dashboard");
+      const [parts, setParts] = useLocalStorage("as_parts", defaultParts);
+      const [members, setMembers] = useLocalStorage("as_members", defaultMembers);
+      const [tasks, setTasks] = useLocalStorage("as_tasks", defaultTasks);
+      const [comps, setComps] = useLocalStorage("as_comps", defaultComps);
+      const [budget, setBudget] = useLocalStorage("as_budget", defaultBudget);
 
       const store = { parts, setParts, members, setMembers, tasks, setTasks, comps, setComps, budget, setBudget };
 
